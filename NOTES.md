@@ -19,3 +19,8 @@
 - always use %zu for size_t — portable everywhere
 - %lu only works by coincidence on 64-bit Linux 
 
+## m1-ec03-functions-attempt1 - 2026-03-09
+- get_bit takes uint8_t (copy) — original unchanged
+- set_bit takes uint8_t* (address) — modifies original directly
+- * in function parameter = "I need the real address, not a copy"
+- same concept as writing to a hardware register address
