@@ -1,13 +1,12 @@
-# module1-ex01-variables-notes
+# Lessons
 
-## attempt1 - 2026-03-06
-- recipe in a Makefile always specify existing files 
-- what is f in the 36.6f?
+## Index
+- [%02X Format Specifier](#m1-ex01-variables-attempt2---2026-03-07)
 
-## attempt2 - 2026-03-07
+## m1-ex01-variables-attempt2 - 2026-03-07
 - what is %02X?
 
-    ### printf Format Specifier Breakdown (%X/%x)
+### printf Format Specifier Breakdown (%X/%x)
     | Specifier | Meaning |
     |-----------|---------|
     | `%X` | Uppercase hex, no padding |
@@ -35,14 +34,3 @@
     ```
 
     The `0` in `%02X` is the **flag** (zero-pad), `2` is the **minimum width**.
-
-- the compiled executable in the Linux won't have extensions
-- cannot catch in .gitignore without specify the file name precisely, for example in this exercise: module*/*/attempt*/main
-- above approach may not be a best practice but works for this project, perhaps revisit this later
-- if the file already staged then "git rm --cached (file needs to unstage)" would be required
-
-## attempt3 - 2026-03-08
-
-- sizeof() returns size_t
-- always use %zu for size_t — portable everywhere
-- %lu only works by coincidence on 64-bit Linux 
