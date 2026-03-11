@@ -24,3 +24,9 @@
 - set_bit takes uint8_t* (address) — modifies original directly
 - * in function parameter = "I need the real address, not a copy"
 - same concept as writing to a hardware register address
+
+## m1-ex04-arrays-and-strings - 2026-03-11
+- reverse_array = endianness byte swap — same concept
+- strings in C are just char arrays ending with '\0'
+- my_strcpy must manually add '\0' — nothing does it for you
+- array name passed to function = pointer to first element
