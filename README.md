@@ -31,7 +31,7 @@ One commit per day. Type everything. No copy-paste.
 - [x] M1-Ex01 Variables and Types
 - [x] M1-Ex02 Control Flow
 - [x] M1-Ex03 Functions
-- [ ] M1-Ex04 Arrays and Strings
+- [x] M1-Ex04 Arrays and Strings
 - [ ] M1-Ex05 Structs
 - [ ] M1-Ex06 File I/O
 
