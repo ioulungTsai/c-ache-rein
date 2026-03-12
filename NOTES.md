@@ -33,3 +33,9 @@
 
 ## m1-ex05-struct-attempt1 - 2026-03-12
 - What does the compiler consider as using a variable?
+
+## m1-ex05-struct-attempt2 - 2026-03-12
+- GCC warning options full list:
+  https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html
+- difference between -Wall and -Wextra — what does each enable?
+- can warnings be treated as errors? (-Werror flag)
