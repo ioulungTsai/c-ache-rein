@@ -39,3 +39,12 @@
   https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html
 - difference between -Wall and -Wextra — what does each enable?
 - can warnings be treated as errors? (-Werror flag)
+
+## m1-ex06-file-io-attempt1 - 2026-03-13
+- is '_t' in the sensor_log_t form a keyword in C? (if with '_type' no highlight in code)
+- don't have file io core concepts in C to fully understnd the code 
+- what is the rule of thumb using const?
+- why return 1, -1?
+- what are %-3u, %-6.1f?
+- why use %hhu, and only %f in fscanf()?
+- why .log is excluded by git even .gitignore don't mention it?
