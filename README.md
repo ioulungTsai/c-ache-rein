@@ -33,7 +33,7 @@ One commit per day. Type everything. No copy-paste.
 - [x] M1-Ex03 Functions
 - [x] M1-Ex04 Arrays and Strings
 - [x] M1-Ex05 Structs
-- [ ] M1-Ex06 File I/O
+- [x] M1-Ex06 File I/O
 
 ### Module 2 — Pointers and Memory
 - [ ] M2-Ex01 Pointer Basics
