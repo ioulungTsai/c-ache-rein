@@ -177,3 +177,64 @@ Generally discouraged — may hide real bugs elsewhere.
 ```bash
 gcc -Wall -Wextra -Wno-unused-but-set-parameter -g -o main main.c
 ```
+
+## m1-ex06-file-io-attempt1 — 2026-03-14
+
+### File I/O — fopen modes
+- "r"=read 
+- "w"=write+destroy 
+- "a"=append 
+- "r+"=read+write
+
+Always use "a" for logging — "w" destroys existing content.
+
+Always fclose() — unclosed files lose data on embedded systems.
+
+### return values convention
+- 0 = success
+- -1 = error in functions
+- 1 = error in main()
+
+the pattern from STM32 work
+- HAL_OK=0
+- HAL_ERROR=1 
+
+    
+
+### const rule of thumb
+- Use const when passing strings you won't modify.
+- Use const for fixed values and read-only hardware registers.
+
+### format specifier flags
+- %-3u = left-align, minimum 3 chars wide, unsigned int.
+- %hhu = unsigned char (uint8_t) — must match exact size in fscanf.
+- %f in fscanf = float*
+- %lf in fscanf = double* — must match exactly.
+
+### File I/O function signatures
+- fopen  → FILE* fopen(const char*, const char*) — returns NULL on fail
+- fclose → int fclose(FILE*) — flushes buffer, always call
+- fprintf → int fprintf(FILE*, const char*, ...) — pass values
+- fscanf  → int fscanf(FILE*, const char*, ...) — pass addresses
+- printf = fprintf(stdout, ...) — stdout is just a pre-opened FILE*
+- fscanf returns number of items matched — use == N in while loop
+
+### C naming conventions
+- ALL_CAPS    → macros only (#define)
+- lowercase_t → typedef types (sensor_log_t, uint8_t)
+- lowercase   → functions and variables
+- FILE uppercase = historical exception from 1970s C standard library
+- Every type = memory size + interpretation, nothing more
+
+### Type interpretation — two levels
+- Declaration: compiler generates correct instructions for the type
+- Read:        same bits mean different things through different types
+- Cast:        deliberately reinterpret same bytes — type punning
+- 0xFF as uint8_t = 255, as int8_t = -1 — same bits, different meaning
+- Hardware registers = raw bits you interpret per datasheet field
+
+### Type punning — safe vs dangerous
+- Safe:      union with integer types — packet parsing, register overlays
+- Dangerous: float↔integer via pointer cast — undefined behavior
+- Safe float: use memcpy(&val, &raw, sizeof(float)) — no UB
+- Embedded punning = integers only, union-based, datasheet-driven

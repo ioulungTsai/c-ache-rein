@@ -42,9 +42,19 @@
 
 ## m1-ex06-file-io-attempt1 - 2026-03-13
 - is '_t' in the sensor_log_t form a keyword in C? (if with '_type' no highlight in code)
-- don't have file io core concepts in C to fully understnd the code 
+
+  > No, _t is not a C keyword, but it is a naming convention reserved by the POSIX standard for system-defined types, which is why VS Code recognizes it by default for syntax highlighting. It can be customized to make '_type' highlighted. - 2026-03-14
+
+- don't have file io core concepts in C to fully understnd the code
+  >check below in LESSONS.md
 - what is the rule of thumb using const?
 - why return 1, -1?
 - what are %-3u, %-6.1f?
 - why use %hhu, and only %f in fscanf()?
+  >check above in LESSONS.md
+
 - why .log is excluded by git even .gitignore don't mention it?
+
+  >I missed that the .log file was included. I'll untrack it and add it to .gitignore.
+  
+  ```git rm --cached [file needs to be untracked]```
