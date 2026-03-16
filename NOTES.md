@@ -58,3 +58,10 @@
   >I missed that the .log file was included. I'll untrack it and add it to .gitignore.
   
   ```git rm --cached [file needs to be untracked]```
+
+## m2-ex01-pointer-basics-attempt1 - 2026-03-15
+- what is the purpose of the casting (void *)?
+- uint8_t *pa and uint8_t* pa identical — star belongs to variable not type
+- never uint8_t* pa, pb — only pa would be pointer, pb would be uint8_t
+- (void*) cast for %p — printf %p requires void* exactly
+- void* = generic pointer, no type, accepts any address
