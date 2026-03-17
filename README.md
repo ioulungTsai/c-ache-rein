@@ -36,8 +36,8 @@ One commit per day. Type everything. No copy-paste.
 - [x] M1-Ex06 File I/O
 
 ### Module 2 — Pointers and Memory
-- [ ] M2-Ex01 Pointer Basics
-- [ ] M2-Ex02 Pointer Arithmetic
+- [x] M2-Ex01 Pointer Basics
+- [x] M2-Ex02 Pointer Arithmetic
 - [ ] M2-Ex03 Malloc and Free
 - [ ] M2-Ex04 my_memcpy, my_strlen, my_strcmp
 - [ ] M2-Ex05 Structs with Pointers
