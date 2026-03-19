@@ -238,3 +238,48 @@ the pattern from STM32 work
 - Dangerous: float↔integer via pointer cast — undefined behavior
 - Safe float: use memcpy(&val, &raw, sizeof(float)) — no UB
 - Embedded punning = integers only, union-based, datasheet-driven
+
+## m2-ex03 — malloc, free, stack vs heap
+
+### The complete free pattern
+```c
+free(ptr);
+ptr = NULL;
+```
+free() releases memory but pointer still holds old address — dangling pointer.
+Setting NULL immediately means accidental use crashes loudly instead of
+silently corrupting memory. Silent corruption in embedded = worst category
+of bug — random behavior, only reproducible under specific conditions.
+
+### malloc NULL check
+malloc fails when heap is exhausted, fragmented, or no contiguous block available.
+Without NULL check — dereference NULL on next line — crash with no useful message.
+With NULL check — controlled failure with meaningful error at the right place.
+
+### Stack vs heap memory layout
+```
+High addresses
+├── Stack  ← grows DOWN, each function call gets lower address
+│
+│   (free space between them)
+│
+├── Heap   ← grows UP, each malloc gets higher address
+├── BSS    ← uninitialized globals
+├── Data   ← initialized globals
+└── Text   ← your code
+Low addresses
+```
+On STM32F407: RAM starts at 0x20000000, stack at top grows down,
+heap at bottom grows up — if they meet → stack overflow, no OS to catch it.
+FreeRTOS task stack sizes defined precisely for this reason.
+
+### Proving stack grows down
+Local variables in same function — unreliable, compiler arranges freely.
+Recursive function calls — reliable, each call gets lower address:
+```
+depth 0: 0x7ffc...e967
+depth 1: 0x7ffc...e937  ← 0x30 (48 bytes) lower
+depth 2: 0x7ffc...e907  ← 0x30 lower
+depth 3: 0x7ffc...e8d7  ← 0x30 lower
+```
+48 bytes = return address + saved registers + local variables + alignment.

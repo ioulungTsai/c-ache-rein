@@ -65,3 +65,11 @@
 - never uint8_t* pa, pb — only pa would be pointer, pb would be uint8_t
 - (void*) cast for %p — printf %p requires void* exactly
 - void* = generic pointer, no type, accepts any address
+
+## m2-ex03-malloc-free-attempt1 - 2026-03-17
+- always free(ptr) then ptr = NULL — two lines, never one without the other
+- malloc returns NULL on failure — always check before using
+- stack grows down at function call level — proven with recursion
+- heap grows up — proven with sequential malloc addresses
+- within one stack frame compiler arranges variables freely — not reliable for direction proof
+- dangling pointer = pointer still holds address after free — silent corruption risk
