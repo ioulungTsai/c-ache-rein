@@ -73,3 +73,12 @@
 - heap grows up — proven with sequential malloc addresses
 - within one stack frame compiler arranges variables freely — not reliable for direction proof
 - dangling pointer = pointer still holds address after free — silent corruption risk
+
+## m2-ex04-string-functions-attempt1 - 2026-03-17
+- my_memcpy uses void* to accept any pointer type — casts to uint8_t* inside to walk byte by byte
+- my_strcmp casts to unsigned char — char is signed, values >127 give wrong comparison without cast
+- my_strcmp subtracts ASCII values of first differing characters
+- result sign matters, not exact value: 0=equal, <0=s1 before s2, >0=s1 after s2
+- ASCII '1'=49, '2'=50 — that's why DHT11 vs DHT22 gives exactly -1
+- my_strcpy saves start pointer before arithmetic — returns original head not moved pointer
+- void* = generic pointer, accepts any type, no arithmetic allowed until cast to concrete type

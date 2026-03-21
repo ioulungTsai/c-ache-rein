@@ -283,3 +283,73 @@ depth 2: 0x7ffc...e907  ← 0x30 lower
 depth 3: 0x7ffc...e8d7  ← 0x30 lower
 ```
 48 bytes = return address + saved registers + local variables + alignment.
+
+## m2-ex04 — implementing standard library functions
+
+### why void* in my_memcpy
+memcpy is generic — must accept any pointer type, not just uint8_t*.
+void* accepts any pointer without cast at call site.
+Inside function: cast to uint8_t* to walk byte by byte — smallest unit.
+Same pattern used in real memcpy, memset, memmove in standard library.
+```c
+/* accepts uint32_t*, sensor_t*, anything */
+void my_memcpy(void *dst, const void *src, size_t n)
+{
+    uint8_t *d = (uint8_t *)dst;   /* cast here, not at call site */
+    const uint8_t *s = (const uint8_t *)src;
+    ...
+}
+```
+
+### why (unsigned char) in my_strcmp
+char is signed on most platforms: range -128 to 127.
+bytes above 127 become negative as signed char.
+subtraction of signed chars gives wrong ordering for values >127.
+(unsigned char) cast forces range 0-255 — correct comparison always.
+C standard requires strcmp to compare as unsigned char for this reason.
+
+### why my_strcpy saves start pointer
+pointer arithmetic moves dst forward during copy.
+without saving start, return value would point to end of string not beginning.
+caller needs the beginning — save before moving, return saved start.
+pattern: save head → walk → return head.
+
+## m2-ex04 — my_strcmp return value
+
+strcmp walks both strings until a mismatch or \0.
+returns: (unsigned char)*s1 - (unsigned char)*s2 at first mismatch.
+
+only the sign matters:
+- 0        → strings identical
+- negative → s1 alphabetically before s2
+- positive → s1 alphabetically after s2
+
+example:
+  "DHT11" vs "DHT22" → mismatch at '1' vs '2' → 49 - 50 = -1
+  "DHT22" vs "DHT11" → mismatch at '2' vs '1' → 50 - 49 =  1
+
+always compare with == 0, < 0, > 0 — never rely on exact value.
+
+## m2-ex04 — why implement standard library functions
+
+### three purposes
+1. understand what happens inside — no black box, know where bugs hide
+2. classic embedded interview questions — memcpy, strlen, strcmp asked constantly
+3. bare metal targets may have no libc — must implement yourself
+
+### real embedded use cases
+- my_memcpy: copy data to hardware register or DMA buffer
+- my_memset: zero out buffer before DMA transfer
+- my_strcmp: match sensor or device name from config
+
+## m2-ex04 — my_strcmp real use cases
+
+### three scenarios
+1. exact match (== 0): match sensor type, select correct driver
+2. ordering (< 0, > 0): sort device list, find alphabetical position
+3. binary search (all three): search sorted command or config table
+
+### rule
+never rely on exact value (-1, 1, -17...)
+only trust the sign — compiler and platform dependent exact values
+always compare with == 0, < 0, > 0
