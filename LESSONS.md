@@ -353,3 +353,18 @@ always compare with == 0, < 0, > 0 — never rely on exact value.
 never rely on exact value (-1, 1, -17...)
 only trust the sign — compiler and platform dependent exact values
 always compare with == 0, < 0, > 0
+
+## m2-ex04 — void* interface vs uint8_t* implementation
+
+void* at interface = generality — caller passes any pointer type
+uint8_t* inside    = implementation — must cast to do arithmetic
+
+these are separate concerns:
+- interface: what the caller sees — never changes
+- implementation: how bytes are moved — always byte by byte
+
+void* cannot do pointer arithmetic — compiler doesn't know step size
+uint8_t* steps by 1 byte — correct for any type
+caller passes byte count n — function doesn't know or care about element type
+
+casting inside does not reduce generality — it enables the work
