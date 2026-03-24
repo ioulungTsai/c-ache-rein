@@ -40,7 +40,7 @@ One commit per day. Type everything. No copy-paste.
 - [x] M2-Ex02 Pointer Arithmetic
 - [x] M2-Ex03 Malloc and Free
 - [x] M2-Ex04 my_memcpy, my_strlen, my_strcmp
-- [ ] M2-Ex05 Structs with Pointers
+- [x] M2-Ex05 Structs with Pointers
 - [ ] M2-Ex06 Linked List
 
 ### Module 3 — Embedded Patterns

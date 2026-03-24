@@ -82,3 +82,14 @@
 - ASCII '1'=49, '2'=50 — that's why DHT11 vs DHT22 gives exactly -1
 - my_strcpy saves start pointer before arithmetic — returns original head not moved pointer
 - void* = generic pointer, accepts any type, no arithmetic allowed until cast to concrete type
+
+## m2-ex05-structs-pointers-attempt1 - 2026-03-22
+- register_t conflicts with system header typedef in sys/types.h
+- system headers reserve certain _t names — always check if name compiles
+- renamed to reg_t to avoid conflict
+
+## m2-ex05-structs-pointers-attempt1 - 2026-03-23
+- register_t conflicts with sys/types.h — renamed to reg_t
+- free inner allocations before outer — reverse order of allocation
+- cleanup on partial failure: free completed allocations before returning NULL
+- sensor_t** needed when function must modify the pointer itself not what it points to

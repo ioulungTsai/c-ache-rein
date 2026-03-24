@@ -368,3 +368,36 @@ uint8_t* steps by 1 byte — correct for any type
 caller passes byte count n — function doesn't know or care about element type
 
 casting inside does not reduce generality — it enables the work
+
+## m2-ex05 — structs with heap allocation
+
+### naming conflicts with system headers
+
+register_t is typedef'd as long int in sys/types.h on Linux.
+POSIX reserves all identifiers ending in _t — technically yours too,
+but in practice short unique names like reg_t, sensor_t are safe.
+if you see "conflicting types" error on a typedef — check system headers first.
+quick fix: rename your type, add project prefix e.g. app_reg_t.
+
+### cleanup on partial failure
+free all successful allocations before returning NULL on inner failure.
+without cleanup: partial allocations leak on every failed creation.
+on embedded systems running months: repeated leaks exhaust heap silently.
+
+### free in reverse order of allocation
+always free inner members before freeing outer struct.
+freeing outer first makes inner address invalid — undefined behavior.
+rule: last allocated = first freed.
+
+### pointer to pointer — sensor_t**
+needed when function must modify the pointer itself not what it points to.
+same rule as pointer to variable — pass address of what you want to change.
+
+three real uses:
+1. factory function: void create(sensor_t **out) — *out = malloc(...)
+2. linked list: void insert(node_t **head) — modifies caller's head
+3. array of pointers: sensor_t *sensors[4] — sensor_t **ptr = sensors
+
+call site always passes address of pointer:
+  sensor_t *s = NULL;
+  create(&s);   /* &s = address of pointer s */
