@@ -44,7 +44,7 @@ One commit per day. Type everything. No copy-paste.
 - [x] M2-Ex06 Linked List
 
 ### Module 3 — Embedded Patterns
-- [ ] M3-Ex01 Bitwise Macros SET/CLEAR/TOGGLE/CHECK
+- [x] M3-Ex01 Bitwise Macros SET/CLEAR/TOGGLE/CHECK
 - [ ] M3-Ex02 Volatile and Const
 - [ ] M3-Ex03 Memory-Mapped Register Simulation
 - [ ] M3-Ex04 Fixed-Point Math

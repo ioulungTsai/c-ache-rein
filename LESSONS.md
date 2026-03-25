@@ -429,3 +429,34 @@ always save what you need before freeing:
 array:  fixed size, contiguous memory, O(1) random access
 list:   dynamic size, scattered memory, O(n) traversal
 embedded use: command queues, event lists, dynamic sensor lists
+
+## m3-ex01 — bitwise macros
+
+### four operations summary
+SET_BIT    |=  (1U << bit)    force bit to 1
+CLEAR_BIT  &= ~(1U << bit)    force bit to 0
+TOGGLE_BIT ^=  (1U << bit)    flip bit
+CHECK_BIT  (>> bit) & 1U      read bit value — 0 or 1
+
+### CLEAR_BIT walk through
+CLEAR_BIT(reg, 3):
+  1U << 3    = 00001000   mask of target bit
+  ~00001000  = 11110111   all bits flipped
+  reg & 11110111          AND preserves all bits except target
+  target bit forced to 0, all others unchanged
+
+### 1U vs 1
+1 is signed int — shifting into sign bit = undefined behavior.
+1U is unsigned int — no sign bit, safe for 8/16/32 bit registers.
+1UL for uint32_t registers on platforms where int is 16-bit.
+same family as float literal suffixes: f, U, UL, ULL, L.
+
+### why parentheses around every macro parameter
+macros expand as text — operator precedence applies after expansion.
++ has HIGHER precedence than << — not lower.
+so 1U << 3+1 without parens accidentally works — (3+1) evaluated first.
+but dangerous case is when macro result used in larger expression:
+  CHECK_BIT(reg, 2) + 1 without outer parens
+  expands to: reg >> 2 & 1U + 1
+  + higher than & → evaluates as reg >> 2 & (1U + 1) = reg >> 2 & 2 ← wrong
+rule: wrap every parameter and entire macro expression in () always.

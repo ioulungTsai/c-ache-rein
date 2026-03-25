@@ -99,3 +99,10 @@
 - &curr prints stack address of local variable, curr prints heap node address
 - push_front: new->next = *head then *head = new — two steps, order matters
 - list_free: save next before free — reading freed memory is undefined behavior
+
+## m3-ex01-bitwise-macros-attempt1 - 2026-03-25
+- always wrap macro params in () — protects against operator precedence at expansion
+- 1U not 1 — unsigned avoids undefined behavior when shifting into sign bit
+- CLEAR_BIT: shift 1 to position → ~ flips all bits → & preserves others, clears target
+- 1U/1UL/1ULL/f/L — literal suffixes specify type, same family as 36.6f
+- + has higher precedence than << — missing () in macros breaks when result used in larger expression
