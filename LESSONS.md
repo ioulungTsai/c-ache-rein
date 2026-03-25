@@ -401,3 +401,31 @@ three real uses:
 call site always passes address of pointer:
   sensor_t *s = NULL;
   create(&s);   /* &s = address of pointer s */
+
+## m2-ex06 — linked list
+
+### why struct node needs a name
+anonymous struct has no name to self-reference during definition.
+node_t doesn't exist yet while compiler reads the struct body.
+struct node is available immediately — only way to point to same type.
+
+### list_push_front pointer steps
+before: head → A → B → NULL
+step 1: n = malloc new node (0xFF)
+step 2: n->next = *head    → new node points to A
+step 3: *head = n          → head now points to new node
+after:  head → 0xFF → A → B → NULL
+order matters — swap steps 2 and 3 and head points to itself
+
+### list_free — save next before free
+free() releases memory — contents immediately undefined.
+accessing curr->next after free = undefined behavior.
+always save what you need before freeing:
+  node_t *next = curr->next;  ← save while valid
+  free(curr);                  ← now safe
+  curr = next;                 ← use saved value
+
+### linked list vs array
+array:  fixed size, contiguous memory, O(1) random access
+list:   dynamic size, scattered memory, O(n) traversal
+embedded use: command queues, event lists, dynamic sensor lists

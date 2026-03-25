@@ -93,3 +93,9 @@
 - free inner allocations before outer — reverse order of allocation
 - cleanup on partial failure: free completed allocations before returning NULL
 - sensor_t** needed when function must modify the pointer itself not what it points to
+
+## m2-ex06-linked-list-attempt1 - 2026-03-25
+- struct needs name for self-reference — node_t not defined yet during typedef
+- &curr prints stack address of local variable, curr prints heap node address
+- push_front: new->next = *head then *head = new — two steps, order matters
+- list_free: save next before free — reading freed memory is undefined behavior
