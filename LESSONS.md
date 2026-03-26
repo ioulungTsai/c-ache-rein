@@ -460,3 +460,134 @@ but dangerous case is when macro result used in larger expression:
   expands to: reg >> 2 & 1U + 1
   + higher than & → evaluates as reg >> 2 & (1U + 1) = reg >> 2 & 2 ← wrong
 rule: wrap every parameter and entire macro expression in () always.
+
+## m3-ex02 — volatile, const, static
+
+### const vs #define
+```c
+#define MAX_SENSORS_MACRO  8    /* preprocessor — no type, no address, no memory */
+const uint8_t MAX_SENSORS = 8;  /* typed, has address, compiler enforced read-only */
+```
+#define: text substitution before compile, no type checking, no memory allocated.
+const: real variable, has type, has memory address, compiler enforces read-only.
+embedded rule: prefer const for typed values, #define for flags and parameterized macros.
+
+**use #define when:**
+- value is used as array size or case label — must be compile-time constant
+- creating function-like macros: #define SET_BIT(r,b) ((r) |= (1U<<(b)))
+- conditional compilation: #ifdef, #ifndef, #endif
+- no type needed or type would be misleading
+```c
+#define BUFFER_SIZE   256        /* array size — must be #define */
+#define STATUS_BUSY   0x01       /* bit flag — no type needed */
+#ifdef DEBUG                     /* conditional compile */
+```
+
+**use const when:**
+- value has a specific type that matters
+- you want compiler type checking at usage
+- value is a pointer or struct — #define cannot express these cleanly
+- debugging — const has an address, visible in debugger
+```c
+const uint8_t  MAX_SENSORS  = 8;       /* typed, debugger visible */
+const float    VREF         = 3.3f;    /* type matters — float not int */
+const uint8_t *LOOKUP_TABLE = table;   /* pointer — #define cannot do this */
+```
+
+**embedded specific rule:**
+- hardware register addresses → always const volatile uint32_t *
+- fixed lookup tables → const array
+- bit flags and masks → #define
+- buffer sizes used as array dimensions → #define
+- everything else typed and fixed → const
+
+### static local variable
+```c
+void counter_demo(void) {
+    static uint32_t count = 0;  /* initialized once, persists between calls */
+    count++;
+}
+```
+regular local: stack, initialized every call, destroyed on return.
+static local:  data segment, initialized once at program start, survives return.
+use for: call counters, persistent state, one-time initialization flags.
+
+### static global variable
+```c
+static uint32_t error_count = 0;  /* visible only in this file */
+```
+without static: any file can access with extern — exposed globally.
+with static:    locked to current file — other files cannot see it.
+static hides, extern exposes — opposite directions.
+use for: module-private state, encapsulation in C without classes.
+
+### volatile — concept
+compiler optimization caches variable values in CPU registers.
+without volatile: compiler assumes value only changes when your code changes it.
+with volatile:    compiler forced to re-read from memory every access.
+                  hardware or another thread might change it anytime.
+
+### volatile — three assembly cases
+
+case 1: empty body, no volatile
+```c
+uint32_t status = 0x00000001;
+while (status & 0x01) { }
+```
+compiler: status never changes → loop runs forever → tight infinite jump
+assembly: .L8: jmp .L8  ← infinite, no memory reads, no ret
+
+case 2: assignment inside, no volatile
+```c
+uint32_t status = 0x00000001;
+while (status & 0x01) { status = 0x00000000; }
+```
+compiler: status 1→0 in one iteration → calculates at compile time → deletes loop
+assembly: ret  ← one instruction, entire loop gone
+
+case 3: assignment inside, with volatile
+```c
+volatile uint32_t status = 0x00000001;
+while (status & 0x01) { status = 0x00000000; }
+```
+compiler: cannot trust memory — hardware might write back → real loop required
+assembly:
+  movl $1, -4(%rsp)      write to memory
+  movl -4(%rsp), %eax    READ from memory first time
+  testb $1, %al          check bit 0
+  je .L8                 skip if clear
+.L10:
+  movl $0, -4(%rsp)      write 0
+  movl -4(%rsp), %eax    READ again — hardware might have changed it
+  testb $1, %al          check bit 0
+  jne .L10               loop back if still set
+.L8:
+  ret                    can exit — hardware clears bit
+
+### volatile — critical difference
+case 2 vs case 3: one keyword difference, completely different assembly
+  without volatile → ret only        loop eliminated, one instruction
+  with volatile    → real loop       memory read every iteration, can exit
+
+### why printf inside loop blocks optimization proof
+printf is external function — compiler cannot prove it doesn't modify status.
+keeps loop as safety measure — volatile difference hidden.
+always use clean isolated functions with no side effects for assembly proof.
+
+### volatile — real embedded consequence
+```c
+/* waiting for I2C byte received flag — STM32 SR1 register */
+volatile uint32_t *SR1 = (volatile uint32_t *)0x40005414;
+while (!(*SR1 & I2C_SR1_RXNE)) { }
+```
+without volatile: compiler may delete polling loop silently.
+with volatile:    correct loop generated, re-reads register every iteration.
+always use volatile for memory-mapped hardware registers.
+
+### volatile — runtime proof limitation
+your code changes status inside loop — compiler sees change either way.
+hardware changes register from outside — compiler cannot see it.
+full runtime proof requires:
+  real hardware: MCU register changed by peripheral
+  threads: another thread modifies shared variable (module 5)
+assembly proof is correct and complete proof on Linux without hardware.

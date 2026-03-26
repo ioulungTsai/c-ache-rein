@@ -106,3 +106,17 @@
 - CLEAR_BIT: shift 1 to position → ~ flips all bits → & preserves others, clears target
 - 1U/1UL/1ULL/f/L — literal suffixes specify type, same family as 36.6f
 - + has higher precedence than << — missing () in macros breaks when result used in larger expression
+
+## m3-ex02-volatile-const-static-attempt1 - 2026-03-26
+- #define: no type, no memory, preprocessor text substitution
+- const: typed, has memory address, compiler enforced read-only
+- static local: initialized once, persists between calls, lives in data segment not stack
+- static global: restricts visibility to current file only — hides from other files
+- extern exposes to other files, static hides — opposite directions
+- without volatile + assignment inside loop → compiler deletes loop entirely → ret only
+- with volatile + assignment inside loop → real loop, movl re-reads memory every iteration
+- printf inside loop blocks optimization — use isolated functions for assembly proof
+- empty loop body without volatile → infinite tight jump (jmp .L8), not deleted
+- assignment inside loop without volatile → calculated at compile time → deleted (ret)
+- make asm target: critical proof — compile -O2, grep isolated functions
+- runtime proof requires real hardware or threads — assembly is correct proof on Linux
