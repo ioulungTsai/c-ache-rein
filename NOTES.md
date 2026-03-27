@@ -120,3 +120,13 @@
 - assignment inside loop without volatile → calculated at compile time → deleted (ret)
 - make asm target: critical proof — compile -O2, grep isolated functions
 - runtime proof requires real hardware or threads — assembly is correct proof on Linux
+
+## m3-ex03-mmio-simulation-attempt1 - 2026-03-27
+- volatile in REG_READ/WRITE — forces real memory access every time, no caching
+- uintptr_t in macro arithmetic — pointer arithmetic steps by sizeof type, not bytes
+- (uintptr_t)base + 0x04 = correct byte offset, base + 0x04 = wrong (steps by 4 bytes)
+- uintptr_t portable — matches pointer size on any platform (4 bytes 32-bit, 8 bytes 64-bit)
+- function parameter uses volatile uint32_t* — type safety at call site
+- macro body casts to uintptr_t — needs raw byte arithmetic for correct offsets
+- real STM32: fixed datasheet address, hardware resets values, hardware changes registers
+- simulation: array address runtime-assigned, values set by code only

@@ -591,3 +591,85 @@ full runtime proof requires:
   real hardware: MCU register changed by peripheral
   threads: another thread modifies shared variable (module 5)
 assembly proof is correct and complete proof on Linux without hardware.
+
+## m3-ex03 — memory-mapped register simulation
+
+### why volatile in REG_READ and REG_WRITE
+```c
+#define REG_READ(base, offset) \
+    (*((volatile uint32_t *)((base) + (offset))))
+```
+without volatile: compiler caches first read in CPU register, never reads hardware again.
+with volatile: every REG_READ generates real memory load, every REG_WRITE generates real store.
+hardware sees every access — critical for status registers and data registers.
+
+### why uintptr_t in macro body, volatile uint32_t* in parameter
+
+function parameter:
+```c
+void periph_init(volatile uint32_t *base)  /* type-safe pointer */
+```
+macro body:
+```c
+(uintptr_t)base + offset   /* raw byte arithmetic */
+```
+pointer arithmetic steps by sizeof the pointed type:
+  base + 0x01 on volatile uint32_t* = base + 4 bytes  ← wrong
+  (uintptr_t)base + 0x01             = base + 1 byte   ← correct
+
+uintptr_t: unsigned integer guaranteed to hold any pointer value.
+  32-bit system: uintptr_t = 4 bytes — matches pointer size
+  64-bit system: uintptr_t = 8 bytes — matches pointer size
+  uint32_t would truncate pointer on 64-bit — wrong and dangerous
+
+### register offset layout
+```c
+static volatile uint32_t fake_peripheral[3] = {
+    0x00000000,   /* [0] CR offset 0x00 — uint32_t = 4 bytes each */
+    0x00000002,   /* [1] SR offset 0x04 */
+    0x00000000    /* [2] DR offset 0x08 */
+};
+```
+array of uint32_t naturally aligns — each element 4 bytes apart.
+matches REG_CR=0x00, REG_SR=0x04, REG_DR=0x08 exactly.
+
+### simulation vs real STM32
+```c
+/* simulation */
+static volatile uint32_t fake_peripheral[3];
+volatile uint32_t *periph = fake_peripheral;  /* address assigned at runtime */
+
+/* real STM32 */
+#define GPIOA_BASE  0x40020000U
+volatile uint32_t *periph = (volatile uint32_t *)GPIOA_BASE;  /* fixed datasheet address */
+```
+three differences:
+  address: runtime-assigned vs fixed datasheet value
+  initial values: set by your code vs set by hardware reset state
+  who changes registers: your code only vs hardware AND your code
+
+volatile is optional in simulation — required on real hardware.
+
+### uintptr_t vs other patterns
+
+uintptr_t primary purpose here: byte-accurate arithmetic, not portability.
+pointer arithmetic steps by sizeof pointed type — wrong for byte offsets.
+uintptr_t steps by 1 byte — correct for register offset arithmetic.
+
+three MMIO patterns:
+1. struct overlay (recommended — CMSIS style)
+   typedef struct { volatile uint32_t CR; volatile uint32_t SR; } PERIPH_t;
+   GPIOA->CR |= (1U << 0) — no arithmetic needed, cleanest approach
+   used by ST, NXP, all major MCU vendors in CMSIS headers
+
+2. uint8_t* cast (common alternative to uintptr_t)
+   *((volatile uint32_t *)((uint8_t *)(base) + offset))
+   uint8_t* steps by 1 byte — same result as uintptr_t
+
+3. uintptr_t cast (what this exercise uses)
+   *((volatile uint32_t *)((uintptr_t)(base) + offset))
+   integer arithmetic — explicit byte stepping
+
+uintptr_t defined in C99 stdint.h — not new, just less common in older embedded code.
+your STM32/ESP32 projects use pattern 1 — struct overlay via CMSIS headers.
+pattern 1 avoids all manual arithmetic — compiler handles offsets via struct layout.
