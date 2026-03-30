@@ -47,7 +47,7 @@ One commit per day. Type everything. No copy-paste.
 - [x] M3-Ex01 Bitwise Macros SET/CLEAR/TOGGLE/CHECK
 - [x] M3-Ex02 Volatile and Const
 - [x] M3-Ex03 Memory-Mapped Register Simulation
-- [ ] M3-Ex04 Fixed-Point Math
+- [x] M3-Ex04 Fixed-Point Math
 - [ ] M3-Ex05 Circular Buffer
 - [ ] M3-Ex06 State Machine
 

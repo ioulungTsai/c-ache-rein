@@ -673,3 +673,73 @@ three MMIO patterns:
 uintptr_t defined in C99 stdint.h — not new, just less common in older embedded code.
 your STM32/ESP32 projects use pattern 1 — struct overlay via CMSIS headers.
 pattern 1 avoids all manual arithmetic — compiler handles offsets via struct layout.
+
+## m3-ex04 — fixed-point math
+
+### why fixed-point
+MCUs without FPU use software-emulated float — slow and expensive.
+fixed-point stores scaled integers — all runtime math stays in integer domain.
+convert at boundary once, compute in integers always.
+
+### Q8 format
+```c
+#define FIXED_SHIFT  8
+#define FIXED_SCALE  (1 << FIXED_SHIFT)  /* 256 */
+```
+lower 8 bits = fractional part (0 to 255)
+upper 24 bits = integer part
+precision floor = 1/256 = 0.00390625 exactly
+fractional range = 0/256=0.0000 to 255/256=0.9961
+256/256 = 1.0000 — becomes integer part, fractional resets to 0
+
+### precision floor — values lost below threshold
+any value smaller than 1/FIXED_SCALE truncated to zero:
+  0.001 * 256 = 0.256 → stored as 0 → completely lost
+  0.003 * 256 = 0.768 → stored as 0 → completely lost
+  0.004 * 256 = 1.024 → stored as 1 → recovers as 0.00390625
+
+choose FIXED_SHIFT based on smallest value needed:
+  need 0.001 precision → Q10 minimum (1/1024 = 0.000977)
+  need 0.01  precision → Q7  minimum (1/128  = 0.0078)
+  need 0.1   precision → Q4  minimum (1/16   = 0.0625)
+
+### why FIXED_MUL shifts right
+```c
+#define FIXED_MUL(a, b) (((a) * (b)) >> FIXED_SHIFT)
+```
+a = 3.14 × 256 = 803   b = 2.00 × 256 = 512
+a × b = 803 × 512 = 411136  — scale factor now 256 × 256 = 65536
+>> 8 removes extra scale: 411136 / 256 = 1606  — back to Q8
+1606 / 256 = 6.2734  ✓
+multiplication doubles scale factor — shift right removes the extra.
+
+### why FIXED_DIV shifts left first
+```c
+#define FIXED_DIV(a, b) (((a) << FIXED_SHIFT) / (b))
+```
+a = 803   b = 512
+a / b = 803 / 512 = 1  — integer division discards fraction
+(a << 8) / b = (803 × 256) / 512 = 401  — Q8 result
+401 / 256 = 1.5664  ✓
+division discards fractional bits — shift left first preserves them.
+
+### FPU boundary rule
+```c
+FLOAT_TO_FIXED  → FPU — boundary conversion, used once
+FIXED_TO_FLOAT  → FPU — display only, used once
+INT_TO_FIXED    → no FPU — integer multiply
+FIXED_ADD/SUB   → no FPU — integer add/subtract
+FIXED_MUL       → no FPU — integer multiply + right shift
+FIXED_DIV       → no FPU — left shift + integer divide
+```
+convert at boundary, compute in integers — FPU touched minimally.
+critical on MCUs without FPU: STM32F0, STM32F1, Cortex-M0 targets.
+
+### sensor pipeline pattern
+```
+ADC raw → integer voltage (mV) → fixed-point temp → display
+```
+adc_to_voltage_mv: pure integer, no fixed-point needed
+voltage_to_temp: converts to fixed-point, divides by 10
+print_fixed: FIXED_TO_FLOAT for display only — float never used in pipeline
+82.5 preserved correctly — Q8 fractional bits hold the .5 exactly (128/256)

@@ -130,3 +130,14 @@
 - macro body casts to uintptr_t — needs raw byte arithmetic for correct offsets
 - real STM32: fixed datasheet address, hardware resets values, hardware changes registers
 - simulation: array address runtime-assigned, values set by code only
+
+## m3-ex04-fixed-point-attempt1 - 2026-03-30
+- fixed-point: integers with imaginary decimal point — no FPU needed at runtime
+- Q8 format: FIXED_SHIFT=8, scale=256, precision=1/256=0.00390625
+- FLOAT_TO_FIXED and FIXED_TO_FLOAT touch FPU — boundary only, not runtime math
+- INT_TO_FIXED, ADD, SUB, MUL, DIV — pure integer, no FPU
+- FIXED_MUL shifts right after multiply — removes extra scale factor introduced by multiplication
+- FIXED_DIV shifts left before divide — preserves fractional bits before integer division discards them
+- values smaller than 0.00390625 are lost — truncated to zero in Q8
+- float vs fixed difference 0.006563 — expected Q8 precision loss, not a bug
+- increase FIXED_SHIFT for finer precision: Q16 floor = 1/65536 = 0.0000153
