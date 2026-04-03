@@ -141,3 +141,12 @@
 - values smaller than 0.00390625 are lost — truncated to zero in Q8
 - float vs fixed difference 0.006563 — expected Q8 precision loss, not a bug
 - increase FIXED_SHIFT for finer precision: Q16 floor = 1/65536 = 0.0000153
+
+## m3-ex05-circular-buffer-attempt1 - 2026-04-03
+- head = write index (next empty slot), tail = read index (oldest data)
+- modulo wraps head/tail within BUFFER_SIZE — prevents going past array end
+- power of 2 size enables bitwise AND instead of modulo: (head+1) & (SIZE-1)
+- count resolves head==tail ambiguity — could be full or empty without it
+- data never cleared — old bytes stay in array, head/tail define valid region
+- push rejected when full (count==SIZE), pop rejected when empty (count==0)
+- FIFO order preserved — first pushed is first popped via tail chasing head

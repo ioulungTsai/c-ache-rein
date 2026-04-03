@@ -48,7 +48,7 @@ One commit per day. Type everything. No copy-paste.
 - [x] M3-Ex02 Volatile and Const
 - [x] M3-Ex03 Memory-Mapped Register Simulation
 - [x] M3-Ex04 Fixed-Point Math
-- [ ] M3-Ex05 Circular Buffer
+- [x] M3-Ex05 Circular Buffer
 - [ ] M3-Ex06 State Machine
 
 ### Module 4 — Data Structures

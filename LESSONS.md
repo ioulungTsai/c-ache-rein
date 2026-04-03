@@ -743,3 +743,62 @@ adc_to_voltage_mv: pure integer, no fixed-point needed
 voltage_to_temp: converts to fixed-point, divides by 10
 print_fixed: FIXED_TO_FLOAT for display only — float never used in pipeline
 82.5 preserved correctly — Q8 fractional bits hold the .5 exactly (128/256)
+
+## m3-ex05 — circular buffer
+
+### what it is
+fixed-size array where head and tail wrap around — no shifting needed.
+FIFO: first in first out — tail always points to oldest data.
+used everywhere in embedded: UART RX/TX, SPI DMA, sensor data queues.
+
+### head and tail roles
+```c
+head → next write position  (where next push goes)
+tail → next read position   (where next pop comes from)
+count → how many valid bytes currently in buffer
+```
+push: write to data[head], advance head, count++
+pop:  read from data[tail], advance tail, count--
+
+### why modulo wraps correctly
+```c
+head = (head + 1) % BUFFER_SIZE
+```
+head reaches BUFFER_SIZE-1 → next push: (7+1) % 8 = 0 → wraps to start.
+without modulo: head goes past array end → undefined behavior.
+power of 2 optimization: (head+1) & (BUFFER_SIZE-1) — bitwise AND, no division.
+critical on MCUs without hardware divider — AND is one instruction.
+
+### why count not head==tail for full/empty
+```
+head == tail with no count:
+  empty: tail caught up to head after popping all
+  full:  head lapped tail after filling completely
+  same position — impossible to distinguish
+
+with count:
+  head==tail AND count==0 → empty ✓
+  head==tail AND count==8 → full  ✓
+```
+
+### data never cleared
+old bytes stay in array after pop — tail just moves forward.
+only head and tail define what is valid.
+reading past tail is undefined — stale data from previous cycles.
+no memset needed on pop — saves cycles on MCU.
+
+### embedded use case — UART RX
+```c
+/* ISR pushes received byte — runs in interrupt context */
+void UART_IRQHandler(void) {
+    cbuf_push(&rx_buf, UART->DR);   /* hardware fills buffer */
+}
+
+/* main loop pops and processes */
+while (!cbuf_is_empty(&rx_buf)) {
+    cbuf_pop(&rx_buf, &byte);
+    process(byte);
+}
+```
+ISR and main loop share buffer — volatile and atomic access needed in production.
+covered in module 5 with threads.
