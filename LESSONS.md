@@ -802,3 +802,177 @@ while (!cbuf_is_empty(&rx_buf)) {
 ```
 ISR and main loop share buffer — volatile and atomic access needed in production.
 covered in module 5 with threads.
+
+## m3-ex06 — state machine
+
+### three layers
+
+```
+layer 1 — data (what exists):
+  state_t enum    → all possible states, values 0,1,2...
+  event_t enum    → all possible triggers, values 0,1,2...
+  sm_ctx_t struct → runtime state: current + application data
+
+layer 2 — rules (what can happen):
+  transition_t         → one rule: {next_state, action}
+  transitions[S][E]    → complete rulebook, every combination
+
+layer 3 — engine (makes it run):
+  sm_handle_event()    → lookup + call action + update state
+```
+
+engine never changes. rules change per use case. data holds current reality.
+
+---
+
+### enum vs #define
+
+```c
+/* #define — no type, no checking */
+#define EVENT_START 0
+/* compiler cannot catch: sm_handle_event(&ctx, STATE_IDLE) — wrong type, no warning */
+
+/* enum — typed, checked */
+typedef enum { EVENT_START=0, ... } event_t;
+/* compiler warns if state_t passed where event_t expected */
+```
+
+enum value IS the array index — elegant connection:
+- `EVENT_START=0` → `transitions[state][0]` → correct table column
+- `STATE_IDLE=0`  → `transitions[0][event]` → correct table row
+
+`STATE_COUNT`/`EVENT_COUNT` trick: add state before COUNT → table size updates automatically.
+
+---
+
+### ctx vs transition table
+
+```c
+/* ctx — per instance, runtime only */
+typedef struct {
+    state_t  current;       /* where machine is right now */
+    uint32_t sensor_value;  /* application data */
+    uint32_t error_count;   /* application data */
+} sm_ctx_t;
+
+/* table — static, shared, never changes */
+static const transition_t transitions[STATE_COUNT][EVENT_COUNT] = { ... };
+```
+
+two sensors → two `sm_ctx_t` instances → same table.
+ctx is the state, table is the rules.
+
+---
+
+### function pointer as dispatch mechanism
+
+```c
+typedef void (*action_fn)(sm_ctx_t *ctx);  /* consistent interface for all actions */
+
+/* dispatch — one line handles all transitions */
+t->action(ctx);   /* calls whichever function is stored — no if/else needed */
+```
+
+function pointer IS the dispatch — table stores which function to call.
+same concept: Redux reducer, Linux VFS `file_operations`, HTTP route handler.
+
+---
+
+### why action_ignore not NULL
+
+```c
+/* NULL = address 0x00000000 */
+t->action(ctx);
+/* STM32: address 0 = vector table → hard fault */
+/* Linux: segfault */
+
+/* action_ignore = safe, logs, returns */
+void action_ignore(sm_ctx_t *ctx) {
+    (void)ctx;
+    printf("event ignored\n");
+}
+```
+
+every table cell populated → no unhandled transition possible.
+`action_ignore` makes ignored events visible in debug logs.
+
+---
+
+### switch vs transition table
+
+```
+switch:
+  pros: explicit, compiler catches missing cases (-Wswitch)
+        familiar, debugger steps through naturally
+  cons: N states × M events = huge nested switch
+        adding state requires touching multiple places
+        logic scattered, copy-paste errors common
+
+table:
+  pros: entire machine visible in one place
+        add state/event = add one row/column
+        O(1) lookup, scales to large machines
+  cons: function pointer harder to debug
+        all cells must be defined explicitly
+
+rule: 3-4 states → switch fine, 5+ states → table wins
+```
+
+---
+
+### how states and events are designed
+
+states and events come from system design — not the MCU:
+
+```
+step 1: describe system in plain English
+step 2: identify distinct situations → states
+step 3: identify what causes change  → events
+step 4: fill table — every state+event combination
+step 5: write action functions — real or stub
+```
+
+why each next_state in sensor machine:
+
+```
+IDLE + START → SENSING              natural first step
+SENSING + DATA_READY → PROCESSING   hardware signaled ready
+PROCESSING + DONE → IDLE            work complete, return to wait
+ANY + ERROR → ERROR                 error can happen anytime, safe state
+ANY + RESET → IDLE                  always return to known good state
+SENSING + START → SENSING           already sensing, ignore duplicate
+```
+
+---
+
+### state_names and event_names
+
+```c
+static const char *state_names[] = {"IDLE", "SENSING", "PROCESSING", "ERROR"};
+```
+
+enum value = array index → `state_names[STATE_IDLE]` = `"IDLE"` automatically.
+debug utility only — strip in production:
+
+```c
+#ifdef DEBUG
+    printf("[%s]\n", state_names[ctx->current]);
+#endif
+```
+
+saves flash memory on MCU — strings are expensive.
+
+---
+
+### dispatch — broad concept
+
+input → lookup → execute — appears everywhere:
+
+```
+C state machine:  transitions[state][event] → function pointer
+Redux/React:      dispatch(action) → reducer → new state
+Linux VFS:        file->f_op->read() → driver's read function
+HTTP router:      GET /sensors/1 → getSensor handler
+```
+
+what differs: lookup mechanism. concept identical.

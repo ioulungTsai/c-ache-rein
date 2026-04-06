@@ -150,3 +150,17 @@
 - data never cleared — old bytes stay in array, head/tail define valid region
 - push rejected when full (count==SIZE), pop rejected when empty (count==0)
 - FIFO order preserved — first pushed is first popped via tail chasing head
+
+## m3-ex06-state-machine-attempt1 - 2026-04-06
+- enum values start at 0, auto-increment — STATE_COUNT/EVENT_COUNT always equals total count
+- enum value IS the array index — STATE_IDLE=0 maps to transitions[0], state_names[0]
+- transition table transitions[STATE_COUNT][EVENT_COUNT] — 2D array, O(1) lookup
+- ctx holds runtime state only — current state + application data, not the table
+- table is static const — shared, never changes, one instance for all ctx
+- action_fn is function pointer typedef — one consistent interface for all actions
+- action_ignore safer than NULL — NULL dereference = hard fault on MCU
+- state_names/event_names — debug utility only, strip with #ifdef DEBUG in production
+- switch vs table: switch explicit+compiler checks, table scalable+visible in one place
+- dispatch: input → lookup → execute — same pattern in Redux, Linux VFS, HTTP routing
+- states come from system design not MCU — describe behavior in English first
+- ignored events stay in current state — never leave transition cell undefined
