@@ -976,3 +976,91 @@ HTTP router:      GET /sensors/1 → getSensor handler
 ```
 
 what differs: lookup mechanism. concept identical.
+
+## m4-ex01 — stack
+
+### what it is
+LIFO: last in first out — last pushed is first popped.
+fixed array with top index tracking current position.
+top = -1 means empty, top = SIZE-1 means full.
+
+### why top starts at -1
+0 is a valid array index — cannot use it to mean empty.
+-1 is outside array bounds — unambiguous empty signal.
+top == -1 → nothing in stack, any access would be invalid.
+
+### push vs pop index order
+
+```c
+/* push — increment first, then write */
+s->data[++s->top] = value;
+/* top was 4 → becomes 5 → write to data[5] */
+
+/* pop — read first, then decrement */
+*value = s->data[s->top--];
+/* read data[5] → top becomes 4 */
+```
+
+order matters — wrong order corrupts data or reads wrong slot.
+
+### LIFO in embedded systems
+
+1. CPU call stack — hardware stack, same structure
+   every function call: CPU pushes return address + registers
+   function return: CPU pops them back
+   proved in m2-ex03 — each recursive call gets lower address
+
+2. interrupt nesting — STM32 NVIC
+   main running
+   → UART interrupt fires (priority 2) → CPU pushes context, runs ISR
+       → Timer interrupt fires (priority 1) → CPU pushes context, runs ISR
+       → Timer ISR returns (function return — finished completely)
+       → CPU pops Timer context → UART ISR resumes (continues from pause)
+   → UART ISR returns
+   → CPU pops UART context → main resumes
+   last interrupted = first restored — LIFO exactly
+
+3. undo/redo in configuration
+   change setting → push to history stack
+   undo → pop last change first — LIFO naturally implements undo
+
+### return vs resume
+
+```
+return:
+  function finishes its job completely
+  caller gets result
+  function is done — never continues
+
+  void action_complete(sm_ctx_t *ctx) {
+      printf("done\n");
+      return;    ← function finished, gone
+  }
+
+resume:
+  execution was interrupted mid-way
+  CPU saved exact position (pushed context)
+  after interrupt handled — continues from exact same point
+  nothing was finished — just temporarily paused
+
+  sensor_value = read_adc();   ← interrupted HERE
+  /* interrupt fires → ISR runs → ISR returns */
+  /* CPU restores context → resumes from this exact line */
+  process(sensor_value);       ← continues here
+```
+
+ISR uses return — it finishes completely.
+main uses resume — continues from where it was paused.
+
+### push context — what CPU saves
+
+```
+program counter  → which instruction to return to
+registers        → r0-r12 values at moment of interrupt
+stack pointer    → where the stack was
+status flags     → carry, zero, overflow flags
+```
+
+push context = save all of this to hardware stack.
+pop context  = restore all of it — CPU continues as if nothing happened.
+on STM32 Cortex-M: hardware does this automatically on interrupt entry/exit.

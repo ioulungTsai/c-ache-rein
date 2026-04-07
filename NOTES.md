@@ -164,3 +164,13 @@
 - dispatch: input → lookup → execute — same pattern in Redux, Linux VFS, HTTP routing
 - states come from system design not MCU — describe behavior in English first
 - ignored events stay in current state — never leave transition cell undefined
+
+## m4-ex01-stack-attempt1 - 2026-04-07
+- top starts at -1 — 0 is valid index, -1 is unambiguous empty sentinel
+- push uses ++top (pre-increment) — increment first, then write to new slot
+- pop uses top-- (post-decrement) — read current top first, then decrement
+- stack_peek reads top without removing — same bounds check as pop
+- LIFO: last pushed = first popped — CPU call stack works identically
+- stdlib.h not needed here — no malloc/free, fixed array only, can be removed
+- interrupt nesting is LIFO — last interrupted context = first restored
+- return = function finishes completely, resume = continues from paused point

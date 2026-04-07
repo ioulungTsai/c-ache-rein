@@ -52,7 +52,7 @@ One commit per day. Type everything. No copy-paste.
 - [x] M3-Ex06 State Machine
 
 ### Module 4 — Data Structures
-- [ ] M4-Ex01 Stack
+- [x] M4-Ex01 Stack
 - [ ] M4-Ex02 Queue
 - [ ] M4-Ex03 Circular Buffer Production Quality
 - [ ] M4-Ex04 Binary Search Tree
