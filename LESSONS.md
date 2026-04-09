@@ -1064,3 +1064,83 @@ status flags     → carry, zero, overflow flags
 push context = save all of this to hardware stack.
 pop context  = restore all of it — CPU continues as if nothing happened.
 on STM32 Cortex-M: hardware does this automatically on interrupt entry/exit.
+
+## m4-ex02 — queue
+
+### what it is
+FIFO: first in first out — first enqueued is first dequeued.
+fixed array with head (read) and tail (write) indices, count for full/empty.
+same mechanical structure as circular buffer — different naming convention.
+
+### FIFO vs LIFO
+
+```
+stack (LIFO):
+  last pushed = first popped
+  use: call stack, interrupt nesting, undo history
+
+queue (FIFO):
+  first enqueued = first dequeued
+  use: UART RX buffer, CAN messages, task scheduler,
+       command parser, DMA transfer list
+```
+
+### head and tail roles
+
+```
+enqueue → writes to tail, advances tail
+dequeue → reads from head, advances head
+
+circular buffer used opposite names:
+  push → modifies head (write)
+  pop  → modifies tail (read)
+
+mechanically identical — naming convention differs by author
+what matters: write pointer advances on write, read pointer advances on read
+```
+
+### why queue_print uses (head+i)%SIZE
+
+```c
+/* wrong — assumes valid data starts at index 0 */
+q->data[i]
+
+/* correct — walks from actual head position */
+q->data[(q->head + i) % QUEUE_SIZE]
+```
+
+after dequeuing 3 items head=3 — valid data starts at index 3 not 0.
+walking from index 0 prints stale dequeued data.
+modulo wraps correctly when head+i crosses QUEUE_SIZE boundary.
+
+### circular buffer vs queue
+
+```
+circular buffer (m3-ex05):
+  element size: uint8_t — byte oriented
+  use case:     UART RX/TX, byte streams, ISR-safe data passing
+  focus:        raw byte throughput
+
+queue (m4-ex02):
+  element size: uint32_t — word oriented
+  use case:     task messages, command passing, event queues
+  focus:        structured data passing between tasks
+
+both:
+  fixed array, two indices, count, modulo wrap
+  head==tail ambiguity resolved by count
+  O(1) enqueue and dequeue
+```
+
+in production code these terms are often used interchangeably.
+what matters: implementation matches the use case element size and access pattern.
+
+### embedded FIFO use cases
+
+```
+UART RX buffer:    bytes arrive in order → processed in order
+CAN message queue: messages queued in arrival order → handled in order
+FreeRTOS queue:    tasks at same priority → FIFO scheduling
+command parser:    commands received → executed in submission order
+DMA transfer list: transfers → processed in submission order
+```

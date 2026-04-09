@@ -174,3 +174,13 @@
 - stdlib.h not needed here — no malloc/free, fixed array only, can be removed
 - interrupt nesting is LIFO — last interrupted context = first restored
 - return = function finishes completely, resume = continues from paused point
+
+## m4-ex02-queue-attempt1 - 2026-04-09
+- queue is FIFO: first enqueued = first dequeued — opposite of stack LIFO
+- enqueue writes to tail, dequeue reads from head — opposite naming from circ buffer
+- circular buffer: push→head, pop→tail / queue: enqueue→tail, dequeue→head — same mechanism, different names
+- queue_print uses (head+i)%SIZE not data[i] — valid data starts at head not index 0
+- count resolves head==tail ambiguity — same as circular buffer
+- modulo wrap: (tail+1)%SIZE — same pattern as circular buffer
+- FIFO embedded uses: UART RX, CAN messages, task scheduler, command parser, DMA list
+- mechanically identical to circular buffer — element size and use case differ
