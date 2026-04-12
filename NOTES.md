@@ -184,3 +184,17 @@
 - modulo wrap: (tail+1)%SIZE — same pattern as circular buffer
 - FIFO embedded uses: UART RX, CAN messages, task scheduler, command parser, DMA list
 - mechanically identical to circular buffer — element size and use case differ
+
+## m4-ex03-circular-buffer-production-attempt1 - 2026-04-12
+- ever-increasing head/tail — never reset, overflow is intentional and safe
+- array access uses head & CBUF_MASK (bitwise AND) — faster than modulo, no division
+- CBUF_MASK = CBUF_SIZE - 1 — only valid when size is power of 2
+- count = (head - tail) & CBUF_MASK — correct through uint32_t overflow
+- volatile on head and tail — shared between ISR and main, must re-read each time
+- data[] not volatile — each byte has one writer, one reader, no simultaneous access
+- flush resets head/tail to 0 only — data stays, stale until overwritten
+- memset data only when security requires zeroing sensitive data
+- uint8_t for data — matches byte-oriented hardware: UART, SPI, I2C
+- uint32_t for indices — no integer promotion, no truncation concern, supports large buffers
+- uint8_t/uint16_t indices work mathematically BUT get promoted to signed int in expressions
+- integer promotion is not the only reason — buffer size capacity is equally important

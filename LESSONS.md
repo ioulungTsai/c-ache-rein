@@ -1144,3 +1144,153 @@ FreeRTOS queue:    tasks at same priority → FIFO scheduling
 command parser:    commands received → executed in submission order
 DMA transfer list: transfers → processed in submission order
 ```
+## m4-ex03 — circular buffer production quality
+
+### ever-increasing head and tail
+
+```c
+/* learning version — modulo reset */
+cb->head = (cb->head + 1) % BUFFER_SIZE;   /* resets to 0 at SIZE */
+
+/* production version — ever-increasing */
+cb->data[cb->head & CBUF_MASK] = byte;     /* AND extracts array index */
+cb->head++;                                 /* never resets */
+```
+
+ever-increasing advantages:
+- no modulo division — single AND instruction
+- count math works correctly through uint32_t overflow
+- head always logically >= tail — no ambiguity
+
+requires: CBUF_SIZE must be power of 2 for bitwise AND to work correctly.
+
+### bitwise AND vs modulo
+
+```
+CBUF_SIZE = 16, CBUF_MASK = 15 = 0x0F
+
+modulo:  head % 16     — division instruction, slow on no-divider MCUs
+AND:     head & 0x0F   — single instruction, always fast
+
+head=17: 17 & 0x0F = 1  — same as 17 % 16 = 1
+head=32: 32 & 0x0F = 0  — same as 32 % 16 = 0
+```
+
+only valid when size is exact power of 2: 4, 8, 16, 32, 64...
+
+### count through overflow
+
+```c
+uint32_t cbuf_count(cbuf_t *cb)
+{
+    return (cb->head - cb->tail) & CBUF_MASK;
+}
+```
+
+normal case:
+  head=21, tail=10
+  (21 - 10) & 0x0F = 11 & 0x0F = 11 ✓
+
+overflow case (uint32_t wraps at 2^32):
+  tail=0xFFFFFFF8, head=0x00000003
+  logical items: 8 before overflow + 3 after = 11
+
+  unsigned subtraction wraps correctly:
+  0x00000003 - 0xFFFFFFF8 = 0x0000000B = 11
+  11 & 0x0F = 11 ✓
+
+why it works:
+  unsigned subtraction always gives distance between two values
+  wraparound is defined behavior in C for unsigned types
+  & CBUF_MASK extracts only the meaningful lower bits
+  same principle as clock arithmetic — 2 minus 10 = 4 steps apart, not -8
+
+### volatile on head/tail not data
+
+```
+head: written by ISR (producer), read by main (consumer)
+      two execution contexts share this variable
+      without volatile: compiler caches in CPU register
+      ISR updates memory — main reads stale cached value — silent failure
+      volatile: forces re-read from memory every access
+
+tail: written by main (consumer), read by ISR (producer)
+      same problem in reverse — volatile required
+
+data[]: each byte written once by producer, read once by consumer
+        never accessed simultaneously by two contexts
+        no stale cache problem — volatile not needed
+```
+
+ISR scenario:
+```c
+void UART_IRQHandler(void) {
+    cb->data[cb->head & CBUF_MASK] = UART->DR;
+    cb->head++;   /* volatile — main sees this immediately */
+}
+
+while (1) {
+    if (!cbuf_is_empty(&cb)) {   /* reads head — must be fresh */
+        cbuf_pop(&cb, &byte);    /* reads tail — must be fresh */
+        process(byte);
+    }
+}
+```
+without volatile on head — main never sees ISR increment — buffer appears always empty.
+
+### flush resets indices only
+
+```c
+void cbuf_flush(cbuf_t *cb)
+{
+    cb->head = 0;
+    cb->tail = 0;
+    /* data[] untouched — stale bytes remain until overwritten */
+}
+```
+
+head == tail signals empty — producer and consumer see empty buffer.
+stale bytes invisible — head/tail define valid region.
+add memset only when zeroing sensitive data: passwords, keys, private data.
+
+### why uint32_t for head and tail
+
+wrap-around subtraction with uint8_t is mathematically safe if stored back correctly:
+  uint8_t count = (uint8_t)(head - tail)   — defined, works
+  but uint32_t is chosen for two real reasons:
+
+reason 1 — buffer size capacity (primary):
+  uint8_t indices  → max 255 buffer slots
+  uint16_t indices → max 65535 buffer slots
+  uint32_t indices → ~4 billion buffer slots
+  head and tail values directly limit usable buffer size
+
+reason 2 — expression safety:
+  uint8_t and uint16_t get promoted to signed int in expressions
+  requires careful store-back to uint8_t to stay correct
+  uint32_t: already register width on 32-bit MCU — no promotion
+  stays unsigned natively — no truncation concern anywhere
+
+Linux kernel kfifo confirms this:
+  struct __kfifo uses unsigned int (32-bit) for in and out
+  matches CPU register width, supports large buffers,
+  no promotion concern in any expression context
+
+### production vs learning version comparison
+
+```
+m3-ex05 (learning):
+  head/tail reset with modulo
+  count member in struct
+  no volatile
+  purpose: understand the concept
+
+m4-ex03 (production):
+  head/tail ever-increasing, AND for array access
+  count calculated from head-tail, no struct member needed
+  volatile on head/tail for ISR safety
+  bulk push/pop for efficiency
+  flush without memset
+  uint32_t indices for size and safety
+  purpose: use in real firmware
+```
