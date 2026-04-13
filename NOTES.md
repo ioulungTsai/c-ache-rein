@@ -211,3 +211,7 @@
 - bst_find_min: always go left until left == NULL — leftmost node is minimum
 - BST search O(log n) average, O(n) worst case (unbalanced tree)
 - struct needs name (bst_node) for self-reference — same reason as linked list node
+- free() returns memory to heap pool — fully reusable, not lost
+- NULL after free prevents misuse of stale address — loud crash beats silent corruption
+- stack variables including pointer variables released automatically when scope exits
+- only NULL pointers still in scope after free — internal node pointers die with freed heap
