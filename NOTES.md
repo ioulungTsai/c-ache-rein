@@ -198,3 +198,16 @@
 - uint32_t for indices — no integer promotion, no truncation concern, supports large buffers
 - uint8_t/uint16_t indices work mathematically BUT get promoted to signed int in expressions
 - integer promotion is not the only reason — buffer size capacity is equally important
+
+## m4-ex04-bst-attempt1 - 2026-04-13
+- BST property: all left descendants < node < all right descendants
+- insert returns node* — each level assigns returned pointer to connect tree
+- inorder traversal (left→node→right) produces sorted output — BST property guarantees it
+- bst_free frees left and right subtrees before root — reverse of allocation
+- every node gets freed via recursion — not just root
+- only root = NULL required in main — only accessible pointer after bst_free returns
+- internal node pointers become dangling after free — in freed memory, nobody can reach them
+- bst_height: 1 + max(left_height, right_height) — recursive depth calculation
+- bst_find_min: always go left until left == NULL — leftmost node is minimum
+- BST search O(log n) average, O(n) worst case (unbalanced tree)
+- struct needs name (bst_node) for self-reference — same reason as linked list node

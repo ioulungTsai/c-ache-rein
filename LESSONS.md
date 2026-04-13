@@ -1294,3 +1294,127 @@ m4-ex03 (production):
   uint32_t indices for size and safety
   purpose: use in real firmware
 ```
+
+## m4-ex04 — binary search tree
+
+### BST property
+every node satisfies:
+  all values in left subtree  < node value
+  all values in right subtree > node value
+  no duplicates (in this implementation)
+
+this property is established at insert time and maintained always.
+inorder traversal exploits it — left→node→right = sorted output guaranteed.
+
+### insert — why it returns node*
+
+```c
+bst_node_t *bst_insert(bst_node_t *root, uint32_t value)
+{
+    if (root == NULL) return bst_create_node(value);  /* base case */
+    if (value < root->value)
+        root->left = bst_insert(root->left, value);   /* assign returned ptr */
+    else if (value > root->value)
+        root->right = bst_insert(root->right, value); /* assign returned ptr */
+    return root;
+}
+```
+
+recursive call chain for inserting 20 into tree rooted at 50:
+  bst_insert(50, 20) → 20<50, go left
+    bst_insert(30, 20) → 20<30, go left
+      bst_insert(NULL, 20) → create node(20), return it
+    30->left = node(20), return node(30)
+  50->left = node(30), return node(50)
+root = node(50)
+
+each level receives returned pointer and assigns it — tree gets connected
+without needing **root parameter.
+
+### inorder traversal — why sorted
+
+```c
+void bst_inorder(bst_node_t *root)
+{
+    if (root == NULL) return;
+    bst_inorder(root->left);    /* visit all smaller values first */
+    printf("%u ", root->value); /* visit current */
+    bst_inorder(root->right);   /* visit all larger values after */
+}
+```
+
+BST property guarantees left < current < right at every node.
+inorder visits left subtree (all smaller) → current → right subtree (all larger).
+result: values printed in ascending sorted order always.
+
+inserted: 50 30 70 20 40 60 80
+inorder output: 20 30 40 50 60 70 80  ← sorted ✓
+
+### bst_free — why free children before root
+
+```c
+void bst_free(bst_node_t *root)
+{
+    if (root == NULL) return;
+    bst_free(root->left);    /* free entire left subtree */
+    bst_free(root->right);   /* free entire right subtree */
+    free(root);              /* free current node last */
+}
+```
+
+same rule as nested malloc — free inner before outer.
+freeing root first loses the only pointers to children — memory leak.
+
+every node gets freed — recursion reaches every node in the tree.
+as recursion unwinds each node is freed individually.
+
+### why only root = NULL in main
+
+```c
+bst_free(root);
+root = NULL;    /* only this pointer still in scope — NULL it */
+```
+
+after bst_free returns — every node freed.
+internal node pointers (left, right) now dangling — point to freed memory.
+but they live inside freed nodes — nobody can reach them.
+only live accessible pointers need NULLing after free.
+root in main is the only pointer still in scope — the only one to NULL.
+
+### BST vs linked list physically
+
+```
+linked list node:
+  value + one next pointer → linear chain
+
+BST node:
+  value + left pointer + right pointer → branching tree
+
+both: scattered heap memory connected by pointers
+BST: struct needs name for self-reference — same reason as linked list
+```
+
+### search complexity
+
+```
+balanced BST: O(log n) — halves search space at each node
+unbalanced BST: O(n) — degenerates to linked list
+  insert sorted values: 10→20→30→40 → all go right → linear chain
+
+balanced example (our values: 50 30 70 20 40 60 80):
+  search 40: 40<50→left, 40>30→right, found — 3 comparisons for 7 nodes
+  height = 3 = log2(7) ≈ 3 ✓
+```
+
+### embedded use cases
+
+```
+device registry:    look up device by ID — O(log n) faster than linear scan
+error code table:   binary search through sorted error codes
+sensor calibration: sorted lookup table for ADC-to-value mapping
+priority queues:    ordered task scheduling (simpler than heap)
+```
+
+BST less common in embedded than arrays/circular buffers — requires dynamic memory.
+used when: dataset changes at runtime and sorted access needed.
+avoid when: memory is tight or real-time determinism required.
