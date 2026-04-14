@@ -215,3 +215,15 @@
 - NULL after free prevents misuse of stale address — loud crash beats silent corruption
 - stack variables including pointer variables released automatically when scope exits
 - only NULL pointers still in scope after free — internal node pointers die with freed heap
+
+## m4-ex05-state-machine-advanced-attempt1 - 2026-04-14
+- action signature adds uint8_t data — same event carries different byte values each call
+- XOR checksum: self-inverse (A^A=0), detects any single-bit error, lightweight
+- XOR limitation: misses even number of flipped bits in same position — use CRC for stronger check
+- context richer than m3-ex06: frame_t buffer + statistics tracked across events
+- frame accumulates across multiple EVENT_BYTE_RECEIVED — state persists between events
+- transition table pattern identical to m3-ex06 — same engine, richer context
+- action_ignore still used — (void)ctx; (void)data to silence unused warnings
+- checksum flow: start_frame initializes, store_byte XORs each byte, validate reports
+- real protocol behavior: idle→receiving→validating→processing→idle
+- timeout in RECEIVING → ERROR — hardware timeout maps to real UART timeout ISR

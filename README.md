@@ -56,7 +56,7 @@ One commit per day. Type everything. No copy-paste.
 - [x] M4-Ex02 Queue
 - [x] M4-Ex03 Circular Buffer Production Quality
 - [x] M4-Ex04 Binary Search Tree
-- [ ] M4-Ex05 State Machine Advanced
+- [x] M4-Ex05 State Machine Advanced
 
 ### Module 5 — Linux Systems
 - [ ] M5-Ex01 File Descriptors open/read/write/close

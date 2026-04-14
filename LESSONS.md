@@ -1418,3 +1418,112 @@ priority queues:    ordered task scheduling (simpler than heap)
 BST less common in embedded than arrays/circular buffers — requires dynamic memory.
 used when: dataset changes at runtime and sorted access needed.
 avoid when: memory is tight or real-time determinism required.
+
+## m4-ex05 — state machine advanced (UART frame parser)
+
+### why action takes uint8_t data parameter
+
+m3-ex06 actions had no data — they were pure state triggers:
+  void (*action_fn)(sm_ctx_t *ctx)
+
+m4-ex05 actions carry a byte value — same event, different data each time:
+  void (*action_fn)(sm_ctx_t *ctx, uint8_t data)
+
+EVENT_BYTE_RECEIVED fires once per byte — each call carries a different byte.
+without data parameter: action cannot store the actual received value.
+the event says WHAT happened, data says WHAT VALUE came with it.
+
+### XOR checksum — why it works
+
+```
+three properties that make XOR useful for checksums:
+
+1. self-inverse:
+   A XOR A = 0    anything XORed with itself = 0
+   A XOR 0 = A    anything XORed with 0 = itself
+
+2. commutative and associative:
+   order doesn't matter — same result regardless of byte order
+
+3. single-bit error detection:
+   flip any one bit → checksum changes → mismatch detected — guaranteed
+```
+
+how checksum computed across frame:
+```
+bytes: 0x01, 0x02, 0x03
+checksum = 0x01 XOR 0x02 XOR 0x03
+  0x01 = 00000001
+  0x02 = 00000010  XOR → 00000011
+  0x03 = 00000011  XOR → 00000000 = 0x00
+
+receiver computes same XOR → gets 0x00 → match → valid
+any bit flipped in transmission → non-zero result → mismatch detected
+```
+
+limitation: misses even number of flipped bits in same position.
+for stronger detection: CRC (cyclic redundancy check) — used in UART, CAN, Ethernet.
+XOR is lightweight — good for simple embedded protocols with low noise.
+
+### m3-ex06 vs m4-ex05 — same pattern, richer context
+
+```
+same:
+  transition table [STATE][EVENT] → {next_state, action}
+  function pointer dispatch: t->action(ctx, data)
+  action_ignore for undefined transitions
+  state_names/event_names debug arrays
+  sm_handle_event engine — identical structure
+
+genuinely different:
+  action signature includes uint8_t data
+  context holds frame_t buffer — accumulates bytes across events
+  context holds statistics: rx_count, error_count, processed_count
+  real protocol: UART frame parsing with checksum validation
+  state persists meaningful data between events — not just current state
+```
+
+the pattern is identical — richer context and real use case make it advanced.
+m3-ex06 could use m4-ex05's engine unchanged — same dispatch mechanism.
+
+### UART frame parser state flow
+
+```
+IDLE:
+  BYTE_RECEIVED → RECEIVING   first byte starts a frame
+
+RECEIVING:
+  BYTE_RECEIVED → RECEIVING   accumulate bytes into frame buffer
+  FRAME_COMPLETE → VALIDATING end-of-frame marker received, validate
+  TIMEOUT → ERROR             no byte received within timeout window
+
+VALIDATING:
+  CHECKSUM_OK → PROCESSING    checksum matches — process frame data
+  CHECKSUM_FAIL → ERROR       checksum mismatch — discard frame
+
+PROCESSING:
+  PROCESS_DONE → IDLE         processing complete — ready for next frame
+  TIMEOUT → ERROR             processing took too long
+
+ERROR:
+  RESET → IDLE                only RESET escapes error state
+  everything else ignored     stay in error until explicitly cleared
+```
+
+### embedded connection — real UART ISR
+
+```c
+/* real embedded — ISR fires on each received byte */
+void UART1_IRQHandler(void) {
+    uint8_t byte = UART1->DR;             /* read hardware register */
+    sm_handle_event(&ctx, EVENT_BYTE_RECEIVED, byte);  /* dispatch */
+}
+
+/* timeout — timer ISR fires if no byte received */
+void TIM2_IRQHandler(void) {
+    sm_handle_event(&ctx, EVENT_TIMEOUT, 0x00);
+}
+```
+
+state machine decouples protocol logic from hardware — ISR just fires events.
+action functions handle protocol behavior — clean separation.
