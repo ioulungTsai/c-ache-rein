@@ -227,3 +227,17 @@
 - checksum flow: start_frame initializes, store_byte XORs each byte, validate reports
 - real protocol behavior: idle→receiving→validating→processing→idle
 - timeout in RECEIVING → ERROR — hardware timeout maps to real UART timeout ISR
+
+## m5-ex01-file-descriptors-attempt1 - 2026-04-16
+- file descriptor = integer index into kernel's per-process file table
+- open() returns next available fd slot — 0,1,2 reserved for stdin/stdout/stderr
+- fd=3 is first available — kernel assigns lowest unused index
+- write() and read() return ssize_t (signed) — -1 signals error, check errno
+- errno: global variable set by kernel on syscall failure — specific error reason
+- printf → fprintf → fwrite → write(STDOUT_FILENO) — FILE* wraps raw fd
+- scanf → fscanf → fread → read(STDIN_FILENO) — same chain
+- FILE* adds buffering — collects small writes before calling write() syscall
+- raw write(fd) → no buffering, goes straight to kernel
+- lseek: SEEK_SET=from start, SEEK_CUR=from current, SEEK_END=from end
+- O_WRONLY|O_CREAT|O_TRUNC: write-only, create if missing, truncate existing
+- 0644: file permissions — owner read/write, group read, others read

@@ -1527,3 +1527,102 @@ void TIM2_IRQHandler(void) {
 
 state machine decouples protocol logic from hardware — ISR just fires events.
 action functions handle protocol behavior — clean separation.
+
+## m5-ex01 — file descriptors
+
+### what a file descriptor is
+
+file descriptor = integer index into kernel's per-process file table.
+open() does not return the file — it returns a key to look up the file.
+
+```
+kernel table (per process):
+  fd 0 → stdin  (keyboard)
+  fd 1 → stdout (terminal)
+  fd 2 → stderr (terminal)
+  fd 3 → your opened file  ← next available slot
+```
+
+the integer itself is meaningless — what matters is what the kernel maps it to.
+same concept as array index — index points to the real data.
+
+### open/read/write/close vs fopen/fread/fwrite/fclose
+
+```
+C library (FILE*):         Linux syscalls (fd):
+fopen()     →              open()
+fread()     →              read()
+fwrite()    →              write()
+fclose()    →              close()
+```
+
+FILE* adds buffering on top of raw fd:
+  fwrite collects small writes → flushes to write() in larger chunks
+  raw write(fd) → goes straight to kernel, no buffering
+
+printf chain:
+  printf() → fprintf(stdout) → fwrite → write(STDOUT_FILENO, buf, len)
+
+scanf chain:
+  scanf() → fscanf(stdin) → fread → read(STDIN_FILENO, buf, len)
+
+stdout and stdin are FILE* wrappers around fd 1 and fd 0.
+
+### ssize_t — why signed for byte counts
+
+```c
+ssize_t written = write(fd, msg, strlen(msg));
+ssize_t bytes_read = read(fd, buf, BUF_SIZE);
+```
+
+size_t is unsigned — cannot represent -1.
+ssize_t is signed — allows error return:
+  >= 0  → bytes successfully written or read
+  -1    → error occurred
+
+on error: check errno global variable for specific reason:
+  ENOENT → file not found
+  EACCES → permission denied
+  EBADF  → bad file descriptor
+
+### open() flags and permissions
+
+```c
+int fd = open("test.txt", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+```
+
+flags:
+  O_RDONLY  → read only
+  O_WRONLY  → write only
+  O_RDWR    → read and write
+  O_CREAT   → create file if it doesn't exist
+  O_TRUNC   → truncate existing file to zero length
+  O_APPEND  → append to end of file
+
+permissions (0644 — octal):
+  6 = rw-  → owner: read + write
+  4 = r--  → group: read only
+  4 = r--  → others: read only
+
+### lseek — repositioning within file
+
+```c
+lseek(fd, 0, SEEK_SET);   /* go to beginning */
+lseek(fd, 0, SEEK_CUR);   /* get current position */
+lseek(fd, 0, SEEK_END);   /* go to end */
+```
+
+useful for: random access files, re-reading from beginning,
+            finding file size (lseek to SEEK_END returns file size).
+
+### embedded connection
+
+Linux embedded targets use fd-based interface for hardware:
+  /dev/ttyS0   → UART as file descriptor
+  /dev/spidev  → SPI as file descriptor
+  /dev/i2c-1   → I2C as file descriptor
+
+read/write to these fds = read/write to hardware.
+ioctl(fd, command, arg) = configure hardware — covered in ex05.
+same open/read/write/close pattern for files and devices.
+```

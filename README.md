@@ -59,7 +59,7 @@ One commit per day. Type everything. No copy-paste.
 - [x] M4-Ex05 State Machine Advanced
 
 ### Module 5 — Linux Systems
-- [ ] M5-Ex01 File Descriptors open/read/write/close
+- [x] M5-Ex01 File Descriptors open/read/write/close
 - [ ] M5-Ex02 /proc Interface
 - [ ] M5-Ex03 /sys Interface
 - [ ] M5-Ex04 Signals
