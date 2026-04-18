@@ -1626,3 +1626,87 @@ read/write to these fds = read/write to hardware.
 ioctl(fd, command, arg) = configure hardware — covered in ex05.
 same open/read/write/close pattern for files and devices.
 ```
+
+## m5-ex02 — /proc interface
+
+### what /proc is — virtual filesystem
+
+real filesystem: data stored on physical media (SSD, flash, HDD)
+  bytes exist on storage — kernel fetches them on read
+
+/proc virtual filesystem: exists only in kernel memory — nothing on disk
+  open("/proc/uptime") → kernel calculates uptime from internal timer
+                       → generates text on the fly
+                       → returns as if it were a file
+                       → nothing stored anywhere
+
+same open/read/write interface as real files.
+Unix philosophy: everything is a file — hardware, processes, kernel state
+all accessible through the same file descriptor API.
+
+### key /proc files for embedded Linux
+
+```
+/proc/uptime          → system uptime and idle time
+/proc/meminfo         → live memory: total, free, available, cached
+/proc/cpuinfo         → CPU model, cores, clock speed, features
+/proc/self/status     → current process: name, state, PID, memory
+/proc/self/maps       → current process memory map — debug without gdb
+/proc/self/fd         → open file descriptors of current process
+/proc/PID/status      → any process by PID — monitoring tool use case
+```
+
+no special API needed — just open/read like any file.
+
+### /proc/self — how Linux thinks about processes
+
+```
+/proc/self → symlink → /proc/7168  (resolved to caller's PID)
+```
+
+Linux treats every process as a resource with an ID.
+kernel doesn't distinguish "current process" from "any other process."
+/proc/self: kernel resolves to caller's PID automatically.
+two processes reading /proc/self/status simultaneously → each gets their own info.
+
+embedded use: monitoring tool reads /proc/self/status at runtime
+  checks own memory usage, fd count, state — no external tools needed.
+
+### raw fd vs FILE* — when to choose each
+
+```
+raw fd (open/read/write):
+  no buffering — every call goes straight to kernel
+  correct for: /proc, /sys, device files, binary data
+  correct for: exact syscall timing control
+  correct for: bare metal or restricted environments (no libc)
+
+FILE* (fopen/fgets/fprintf):
+  buffered — fewer syscalls, better performance for text
+  formatted I/O — fgets, fscanf, fprintf handle parsing
+  correct for: text files, line-by-line reading, formatted output
+  correct for: when convenience matters more than exact control
+
+embedded bare metal: no C library available
+  only raw syscalls — open/read/write — no FILE* option
+  know both, choose correctly per context
+```
+
+### embedded Linux connection
+
+/proc makes kernel internals visible without special tools:
+
+```c
+/* check memory before large allocation */
+FILE *fp = fopen("/proc/meminfo", "r");
+/* parse MemFree — decide if safe to proceed */
+
+/* monitor another process */
+char path[64];
+snprintf(path, sizeof(path), "/proc/%d/status", target_pid);
+FILE *fp = fopen(path, "r");
+/* read state, memory usage of target process */
+```
+
+same pattern used in system monitoring tools, watchdog daemons,
+resource managers — all in embedded Linux production firmware.

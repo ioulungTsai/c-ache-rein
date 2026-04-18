@@ -241,3 +241,16 @@
 - lseek: SEEK_SET=from start, SEEK_CUR=from current, SEEK_END=from end
 - O_WRONLY|O_CREAT|O_TRUNC: write-only, create if missing, truncate existing
 - 0644: file permissions — owner read/write, group read, others read
+
+## m5-ex02-proc-interface-attempt1 - 2026-04-18
+- /proc is a virtual filesystem — exists only in kernel memory, nothing on disk
+- kernel generates /proc content on the fly from internal data structures
+- same open/read/write interface as real files — Unix "everything is a file" philosophy
+- /proc/uptime: system uptime and idle time in seconds
+- /proc/meminfo: live memory usage — MemTotal, MemFree, MemAvailable
+- /proc/cpuinfo: CPU model, cores, features
+- /proc/self: symlink to /proc/PID of current process — resolved per-process
+- /proc/self/status: process name, state, PID, PPID, memory usage
+- raw fd: no buffering, exact syscall control, correct for binary/device/proc files
+- FILE*: buffered, formatted I/O, correct for text files and line-by-line reading
+- embedded bare metal: no libc available, only raw syscalls — no FILE* option
