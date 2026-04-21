@@ -1710,3 +1710,96 @@ FILE *fp = fopen(path, "r");
 
 same pattern used in system monitoring tools, watchdog daemons,
 resource managers — all in embedded Linux production firmware.
+
+## m5-ex03 — /sys interface
+
+### /proc vs /sys — practical difference
+
+```
+/proc → process and kernel runtime information (read-mostly)
+  /proc/uptime        system uptime
+  /proc/meminfo       memory usage
+  /proc/cpuinfo       CPU details
+  /proc/PID/status    process state
+  tells you WHAT IS HAPPENING
+
+/sys → hardware device configuration and control (read AND write)
+  /sys/class/thermal  CPU/GPU temperatures
+  /sys/class/net      network interface stats and config
+  /sys/class/gpio     GPIO control (Raspberry Pi, BeagleBone)
+  /sys/block          block device info
+  lets you CONTROL HARDWARE
+```
+
+key difference: /proc is informational, /sys is the control interface.
+
+### writing to /sys changes hardware
+
+```
+read /sys/class/net/eth0/statistics/rx_bytes → get received byte count
+write /sys/class/leds/led0/brightness → change LED brightness
+write /sys/class/gpio/gpio17/value → set GPIO pin high or low
+write /sys/class/thermal/cooling_device0/cur_state → change fan speed
+```
+
+write syscall path:
+  userspace write() → kernel sysfs infrastructure
+  → routes to driver's store() function
+  → driver executes hardware change
+
+read syscall path:
+  userspace read() → kernel sysfs infrastructure
+  → routes to driver's show() function
+  → driver reads hardware state → returns as text
+
+### why millidegrees not float
+
+kernel space uses integers only — no floating point in kernel code.
+millidegrees = integer representation with 3 decimal places:
+  25350 = 25.350°C
+  no float needed in kernel or driver
+  userspace divides by 1000 for display — one integer division
+
+consistent across all architectures regardless of FPU presence.
+same pattern: voltage in microvolts, frequency in Hz, time in nanoseconds.
+always integers in /sys — always scale factor — always divide in userspace.
+
+### /sys on real embedded Linux targets
+
+```
+Raspberry Pi:
+  /sys/class/thermal/thermal_zone0/temp  → CPU temperature
+  /sys/class/gpio/gpio17/value           → GPIO control
+  /sys/class/leds/led0/brightness        → onboard LED
+
+BeagleBone:
+  /sys/class/pwm/pwmchip0/pwm0/duty_cycle → PWM control
+  /sys/bus/iio/devices/iio:device0/in_voltage0_raw → ADC reading
+
+i.MX6 (COM Express/SMARC — your Advantech work):
+  /sys/class/thermal → multiple thermal zones
+  /sys/class/net → Ethernet interface control
+  /sys/bus/spi → SPI device configuration
+```
+
+WSL2 limitation: virtual machine — no direct hardware access.
+/sys/class/thermal not exposed — no real CPU temperature sensors.
+test on real embedded Linux target for full /sys capability.
+
+### snprintf buffer sizing
+
+```c
+/* warning: potential truncation */
+char path[256];
+snprintf(path, 256, "/sys/class/net/%s/statistics/rx_bytes", entry->d_name);
+/* entry->d_name max = 255 bytes (NAME_MAX) */
+/* format string = 36 chars + 255 = 291 bytes > 256 buffer */
+
+/* fix: larger buffer */
+char path[512];
+snprintf(path, 512, "/sys/class/net/%s/statistics/rx_bytes", entry->d_name);
+```
+
+compiler -Wformat-truncation catches this at compile time.
+always size path buffers for worst-case string length.
+```

@@ -61,7 +61,7 @@ One commit per day. Type everything. No copy-paste.
 ### Module 5 — Linux Systems
 - [x] M5-Ex01 File Descriptors open/read/write/close
 - [x] M5-Ex02 /proc Interface
-- [ ] M5-Ex03 /sys Interface
+- [x] M5-Ex03 /sys Interface
 - [ ] M5-Ex04 Signals
 - [ ] M5-Ex05 Threads and Mutex
 - [ ] M5-Ex06 System Monitor Tool

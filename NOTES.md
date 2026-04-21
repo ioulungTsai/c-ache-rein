@@ -254,3 +254,17 @@
 - raw fd: no buffering, exact syscall control, correct for binary/device/proc files
 - FILE*: buffered, formatted I/O, correct for text files and line-by-line reading
 - embedded bare metal: no libc available, only raw syscalls — no FILE* option
+
+## m5-ex03-sys-interface-attempt1 - 2026-04-20
+- /sys is virtual filesystem like /proc — kernel generates content on the fly
+- /proc: process and kernel runtime info (read-mostly)
+- /sys: hardware device configuration and control (read AND write)
+- writing to /sys file → routed to kernel driver's store() function → hardware changes
+- reading /sys file → routed to driver's show() function → hardware state returned
+- temperature stored as millidegrees integer — kernel has no FPU, integers only
+- 25350 millidegrees = 25.350°C — userspace divides by 1000 for display
+- /sys/class/thermal: CPU, GPU, battery temperatures on real embedded Linux
+- /sys/class/net: network interface stats — rx_bytes, tx_bytes, operstate
+- /sys/block: block devices — SSD, eMMC, SD card, loop devices
+- WSL2: no direct hardware access — thermal zones not exposed, virtual environment
+- snprintf truncation warning: path buffer must be large enough for worst-case string
