@@ -11,7 +11,7 @@ spaced repetition, and hands-on projects.
 - `module2-pointers-memory/` — Pointers, memory management
 - `module3-embedded-patterns/` — Embedded C, registers, volatile
 - `module4-data-structures/` — Circular buffer, linked list, state machine
-- `module5-linux-systems/` — Linux system interface, /proc, /sys
+- `module5-linux-systems/` — Linux system interface, /proc, /sys, threads, ioctl
 - `module6-capstone/` — Production-quality projects
 
 ## Practice System
@@ -19,8 +19,8 @@ Each exercise follows a structured attempt system:
 - `attempt1/` — first try, struggle is expected
 - `attempt2/` — guided rewrite from scratch after debugging
 - `attempt3/` — memory attempt, one week later, no help
-- `notes.md` — honest debug log per attempt
-- `mistake_log.md` — recurring patterns tracked at root level
+- `NOTES.md` — one-sentence observations per exercise at root
+- `LESSONS.md` — deeper explanations at root
 
 ## Habit
 One commit per day. Type everything. No copy-paste.
@@ -64,8 +64,9 @@ One commit per day. Type everything. No copy-paste.
 - [x] M5-Ex03 /sys Interface
 - [x] M5-Ex04 Signals
 - [ ] M5-Ex05 Threads and Mutex
-- [ ] M5-Ex06 System Monitor Tool
+- [ ] M5-Ex06 ioctl
+- [ ] M5-Ex07 System Monitor Tool
 
 ### Module 6 — Capstone
 - [ ] M6-P01 Sensor Data Logger
-- [ ] M6-P02 Register Manipulation Library with CI/CD
+- [ ] M6-P02 Thread-Safe Circular Buffer with CI/CD
