@@ -268,3 +268,17 @@
 - /sys/block: block devices — SSD, eMMC, SD card, loop devices
 - WSL2: no direct hardware access — thermal zones not exposed, virtual environment
 - snprintf truncation warning: path buffer must be large enough for worst-case string
+
+## m5-ex04-signals-attempt1 - 2026-04-27
+- volatile on running/reload — signal handler interrupts main like ISR interrupts MCU
+- without volatile: compiler caches flag in CPU register — handler's update never seen
+- signal handler is runtime proof of volatile — completes m3-ex02 assembly proof
+- sigaction preferred over signal() — consistent behavior, masking, more info
+- signal() behavior varies across Unix — may reset to default after one signal
+- signal handlers must only call async-signal-safe functions
+- printf/malloc NOT safe in signal handler — both use internal locks (mutexes)
+- deadlock: main holds printf mutex, signal fires, handler calls printf, deadlock
+- malloc in handler: corrupts heap data structures if interrupted mid-bookkeeping
+- pattern: handler sets volatile flag, main loop checks and acts — clean separation
+- SIGINT: Ctrl+C, SIGHUP: reload config, SIGUSR1/2: user-defined
+- kill -SIGNAL PID: send signal to process from terminal

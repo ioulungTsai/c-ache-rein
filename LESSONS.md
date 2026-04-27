@@ -1803,3 +1803,111 @@ snprintf(path, 512, "/sys/class/net/%s/statistics/rx_bytes", entry->d_name);
 compiler -Wformat-truncation catches this at compile time.
 always size path buffers for worst-case string length.
 ```
+
+## m5-ex04 — signals
+
+### what signals are
+
+signals = asynchronous notifications sent to a process
+kernel delivers signal → process interrupted → handler runs → resumes
+
+```
+SIGINT  → Ctrl+C — user interrupt
+SIGTERM → polite termination request (kill default)
+SIGKILL → force kill — cannot be caught or ignored
+SIGHUP  → hangup — convention: reload configuration
+SIGUSR1 → user defined — application specific
+SIGUSR2 → user defined — application specific
+```
+
+### volatile — runtime proof via signals
+
+signal handler interrupts main at any point — same as ISR on STM32.
+without volatile: compiler caches flag value in CPU register during loop.
+handler writes to memory — main reads stale cached value — never sees change.
+
+```c
+static volatile int running = 1;   /* volatile — handler writes, main reads */
+
+void handler_sigint(int sig) {
+    (void)sig;
+    running = 0;   /* write to memory — volatile ensures main sees it */
+}
+
+while (running) {   /* re-reads from memory every iteration */
+    sleep(1);
+}
+```
+
+this IS the runtime proof of volatile that assembly in m3-ex02 could not show.
+assembly proved compiler behavior — signals prove runtime behavior.
+
+### sigaction vs signal()
+
+```c
+/* signal() — legacy, avoid */
+signal(SIGINT, handler);   /* behavior varies by platform */
+                           /* may reset to default after one delivery */
+
+/* sigaction — production standard */
+struct sigaction sa;
+memset(&sa, 0, sizeof(sa));
+sa.sa_handler = handler;
+sigaction(SIGINT, &sa, NULL);
+```
+
+three reasons sigaction is preferred:
+
+1. consistent behavior — never resets to default after delivery
+2. signal masking — sa_mask blocks other signals during handler execution
+3. more information — sa_sigaction variant provides sender PID, signal reason
+
+always use sigaction in production embedded Linux code.
+
+### async-signal safety — why no printf or malloc in handlers
+
+signal interrupts main at ANY point — even mid-printf or mid-malloc.
+
+printf problem:
+  printf internally locks stdout mutex (shared resource)
+  if signal fires while printf holds mutex
+  handler calls printf → tries to lock same mutex → DEADLOCK
+  program hangs forever — no recovery
+
+malloc problem:
+  malloc maintains heap data structures with internal locks
+  if signal fires during malloc's internal bookkeeping
+  handler calls malloc → corrupts heap structures
+  → undefined behavior, crash, silent memory corruption
+
+safe pattern — flag only in handler, action in main:
+  handler: sets volatile flag (async-signal-safe — just memory write)
+  main:    checks flag, calls printf/malloc safely
+
+async-signal-safe functions (kernel-approved short list):
+  write(), read(), _exit(), kill(), signal()
+  simple assignments to volatile variables
+  everything else: NOT safe
+
+### embedded Linux connection
+
+signals map directly to embedded system events:
+
+```
+SIGTERM → graceful shutdown on power button press
+SIGHUP  → reload configuration file without restart
+SIGUSR1 → trigger diagnostic dump
+SIGALRM → periodic timer expiry (alarm() syscall)
+```
+
+production embedded Linux daemon pattern:
+  register handlers at startup
+  main loop: sleep or poll, check volatile flags
+  handler: set flag only — never do real work
+  main: act on flags — print, malloc, file I/O all safe here
+
+same separation as STM32 ISR:
+  ISR: set flag, write to circular buffer — minimal work
+  main: process flag, do real work
+  identical discipline, different platform
+```
