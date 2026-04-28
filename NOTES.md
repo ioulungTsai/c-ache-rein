@@ -282,3 +282,14 @@
 - pattern: handler sets volatile flag, main loop checks and acts — clean separation
 - SIGINT: Ctrl+C, SIGHUP: reload config, SIGUSR1/2: user-defined
 - kill -SIGNAL PID: send signal to process from terminal
+
+## m5-ex05-threads-mutex-attempt1 - 2026-04-28
+- pthread_create: starts thread immediately, non-blocking, returns to caller
+- pthread_join: blocks caller until thread finishes, cleans up thread resources
+- race condition: read-modify-write is three CPU instructions, scheduler can interrupt between them
+- lost updates: two threads read same value, both write same result, one increment lost
+- mutex lock/unlock makes read-modify-write appear atomic — no thread interrupts between them
+- forgot unlock → deadlock — other thread waits forever for lock that never releases
+- sched_yield() forces context switch to reliably trigger race condition in demo
+- -O2 hides race condition — optimizer may serialize operations, use -g for demos
+- volatile not needed for mutex-protected variables — mutex provides both visibility and atomicity

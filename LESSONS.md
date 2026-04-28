@@ -1911,3 +1911,106 @@ same separation as STM32 ISR:
   main: process flag, do real work
   identical discipline, different platform
 ```
+
+## m5-ex05 — threads and mutex
+
+### pthread_create and pthread_join
+
+```c
+pthread_create(&t1, NULL, thread_fn, NULL);
+/* thread starts immediately — runs concurrently with main */
+/* main continues to next line without waiting */
+
+pthread_join(t1, NULL);
+/* main blocks here until t1 finishes */
+/* cleans up thread resources */
+/* without join: zombie thread or premature exit */
+```
+
+lifecycle:
+```
+pthread_create → thread born, starts immediately
+[thread runs concurrently with main and other threads]
+thread function returns → thread done
+pthread_join → main confirms done, resources freed
+```
+
+join order matters:
+  never join a thread that might not exit — deadlock
+  cancel first if thread may not terminate, then join
+
+### race condition — what happens at CPU level
+
+```c
+/* looks like one operation — actually three CPU instructions */
+counter++;
+
+/* CPU executes: */
+LOAD  r1, [counter_addr]   ← read current value from memory
+ADD   r1, r1, 1            ← increment in CPU register
+STORE r1, [counter_addr]   ← write result back to memory
+```
+
+OS scheduler can switch threads between ANY two instructions:
+
+```
+thread A: LOAD  r1 = 5    (counter = 5)
+thread B: LOAD  r1 = 5    (counter = 5, same value)
+thread A: ADD   r1 = 6
+thread A: STORE counter = 6
+thread B: ADD   r1 = 6
+thread B: STORE counter = 6   ← overwrites A's result
+```
+
+two increments happened — counter went 5→6 not 5→7.
+one update silently lost. happens thousands of times per second.
+
+### mutex — makes read-modify-write atomic
+
+```c
+pthread_mutex_lock(&mtx);
+counter++;               /* all three CPU instructions protected */
+pthread_mutex_unlock(&mtx);
+```
+
+lock: if another thread holds mutex → block until released.
+unlock: release mutex → next waiting thread can proceed.
+
+the three CPU instructions now appear as one atomic operation:
+  no other thread can run between LOAD, ADD, STORE
+  result always correct regardless of thread scheduling
+
+### forgot to unlock → deadlock
+
+```c
+pthread_mutex_lock(&mtx);
+counter++;
+/* forgot pthread_mutex_unlock */
+```
+
+thread A locks, never unlocks.
+thread B calls pthread_mutex_lock → blocks forever.
+thread A finishes but lock never released.
+thread B waits forever → program hangs → deadlock.
+
+rule: every lock must have exactly one unlock.
+use consistent lock/unlock pairs — never return or break between them.
+
+### volatile vs mutex
+
+```
+volatile:
+  visibility only — forces re-read from memory
+  no atomicity — read-modify-write still three instructions
+  correct for: signal handlers, hardware registers
+  not correct for: shared counter between threads
+
+mutex:
+  atomicity + visibility
+  makes multi-instruction operations appear as one
+  correct for: any shared data modified by multiple threads
+```
+
+for threads: always use mutex (or stdatomic.h).
+volatile alone is not sufficient for thread safety.
+```
