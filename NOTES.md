@@ -293,3 +293,15 @@
 - sched_yield() forces context switch to reliably trigger race condition in demo
 - -O2 hides race condition — optimizer may serialize operations, use -g for demos
 - volatile not needed for mutex-protected variables — mutex provides both visibility and atomicity
+
+## m5-ex06-system-monitor-attempt1 - 2026-05-02
+- /proc/stat gives cumulative totals — two samples required to calculate CPU rate
+- display thread locks mutex on read — prevents partial update from collector mid-write
+- collector thread owns write, main thread owns display — mutex protects the handoff
+- sleep(2) in main gives collector one full 1-second CPU sample before first display
+- graceful shutdown: SIGINT sets running=0, collector exits loop, pthread_join cleans up
+- sig_atomic_t guaranteed atomic vs signal delivery — not the same as thread safety
+- sig_atomic_t: typedef in <signal.h> to platform's naturally atomic integer type
+- guarantees flag read/write completes in one CPU instruction — signal sees old or new, never garbage
+- used only for flags and simple states (-1, 0, 1) in signal handlers — not for counters or floats
+- on 64-bit Linux: sig_atomic_t is int (32-bit) — already naturally atomic on x86_64

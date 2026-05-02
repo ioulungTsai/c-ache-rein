@@ -2014,3 +2014,66 @@ mutex:
 for threads: always use mutex (or stdatomic.h).
 volatile alone is not sufficient for thread safety.
 ```
+
+## m5-ex06 — system monitor tool
+
+### why CPU usage requires two /proc/stat readings
+/proc/stat contains cumulative totals since boot — not instantaneous values.
+one reading gives position, two readings give rate — same as speed calculation.
+
+sample 1: total=1000000, idle=900000
+sample 2: total=1001000, idle=900700
+delta_total=1000, delta_idle=700
+cpu_usage = (1000-700)/1000 = 30%
+
+interval determines precision — 1 second gives reasonable resolution.
+
+### why display locks mutex even for read
+collector writes all five fields of g_data in sequence — not atomically.
+display reading mid-write sees a partial update: new cpu_pct, old mem_used_kb.
+mutex guarantees display always reads a complete consistent snapshot.
+rule: any shared struct accessed from two threads — lock on both read and write.
+
+### sig_atomic_t — signal-safe atomic type
+
+defined in <signal.h> — created specifically for signal handler flags.
+implementation lives in platform C library (glibc on Linux — open source).
+documentation: man 7 signal, C standard section 7.14, gnu.org/software/libc/manual
+
+what it is:
+  a typedef to whatever integer type is naturally atomic on the current platform
+  the platform picks the right size — 8, 16, 32, or 64-bit depending on CPU
+  on 64-bit Linux: sig_atomic_t = int = 32 bits (already naturally atomic on x86_64)
+
+what it guarantees:
+  reading or writing a sig_atomic_t completes in one CPU instruction
+  signal can only fire between instructions — never during one
+  handler always sees old value or new value — never a half-written garbage value
+
+why it was created:
+  C runs on 8, 16, 32, and 64-bit platforms
+  what fits in one instruction varies per CPU
+  sig_atomic_t moves that knowledge into the standard — programmer uses one type,
+  standard guarantees atomicity on every platform
+
+correct uses — flags and simple states only:
+  volatile sig_atomic_t running = 1;   /* 0 = stop, 1 = run        */
+  volatile sig_atomic_t status  = -1;  /* -1 = unknown, 0 = done   */
+
+incorrect uses:
+  counters — increment is read-modify-write, three instructions, not atomic
+             use stdatomic.h for safe counters
+  floats   — not supported, sig_atomic_t is always an integer type
+  large values — only meaningful for small states, not general data passing
+
+always pair with volatile:
+  volatile ensures compiler re-reads from memory every access
+  sig_atomic_t ensures the read/write is atomic vs signal delivery
+  both keywords serve different purposes — both required together
+
+### collector + display pattern
+collector thread: reads hardware, sleeps, writes g_data under mutex
+display thread (main): reads g_data under mutex, formats output
+clean separation — collector owns data production, main owns presentation
+same pattern used in embedded Linux daemons: one thread polls hardware,
+another services a socket or serial interface with the latest readings.

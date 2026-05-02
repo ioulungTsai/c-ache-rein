@@ -64,7 +64,7 @@ One commit per day. Type everything. No copy-paste.
 - [x] M5-Ex03 /sys Interface
 - [x] M5-Ex04 Signals
 - [x] M5-Ex05 Threads and Mutex
-- [ ] M5-Ex06 System Monitor Tool
+- [x] M5-Ex06 System Monitor Tool
 
 ### Module 6 — Capstone
 - [ ] M6-P01 Sensor Data Logger
